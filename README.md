@@ -36,8 +36,8 @@ Future services, such as a web frontend and backend API, will be added and integ
 ### Setup Steps
 1.  **Clone the repository:**
     ```sh
-    git clone <your-repo-url>
-    cd pfm-docker
+    git clone https://github.com/danribes/pfm_solana_rust
+    cd pfm_solana_rust
     ```
 2.  **Open in VS Code:**
     ```sh
