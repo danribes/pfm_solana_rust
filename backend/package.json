@@ -1,0 +1,57 @@
+{
+  "name": "pfm-community-backend",
+  "version": "1.0.0",
+  "description": "Backend API for PFM Community Management Application",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:database": "jest tests/database/",
+    "db:migrate": "node database/migrations/migrate.js",
+    "db:rollback": "node database/migrations/rollback.js",
+    "db:seed": "node database/seeders/runSeeders.js"
+  },
+  "dependencies": {
+    "@project-serum/anchor": "^0.26.0",
+    "@solana/web3.js": "^1.87.6",
+    "axios": "^1.10.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^2.4.3",
+    "bs58": "^5.0.0",
+    "connect-redis": "^9.0.0",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.6.0",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.1",
+    "express-session": "^1.18.1",
+    "express-validator": "^7.2.1",
+    "helmet": "^7.2.0",
+    "ioredis": "^5.6.1",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.16.2",
+    "pg-hstore": "^2.3.4",
+    "redis": "^5.5.6",
+    "sequelize": "^6.37.7",
+    "uuid": "^11.1.0",
+    "validator": "^13.11.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.4"
+  },
+  "keywords": [
+    "community",
+    "management",
+    "api",
+    "postgresql",
+    "sequelize"
+  ],
+  "author": "PFM Team",
+  "license": "MIT"
+}

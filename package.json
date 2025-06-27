@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "@solana/web3.js": "^1.98.2",
+    "pg": "^8.16.2",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7"
+  },
+  "devDependencies": {
+    "jest": "^30.0.3",
+    "supertest": "^7.1.1"
+  }
+}
