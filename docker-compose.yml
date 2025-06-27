@@ -10,15 +10,312 @@ services:
     volumes:
       # Mount the entire project directory
       - .:/workspace:cached
+      - node_modules_shared:/workspace/frontend/shared/node_modules
+      - node_modules_admin:/workspace/frontend/admin/node_modules
+      - node_modules_member:/workspace/frontend/member/node_modules
+      - node_modules_backend:/workspace/backend/node_modules
     working_dir: /workspace
+    ports:
+      - "3000:3000"  # Backend API
+      - "3001:3001"  # Admin Portal
+      - "3002:3002"  # Member Portal
+    environment:
+      - NODE_ENV=development
+      - CONTAINER_MODE=true
+      - POSTGRES_URL=postgresql://pfm_user:pfm_password@postgres:5432/pfm_community
+      - REDIS_URL=redis://redis:6379
+      - SOLANA_RPC_URL=http://solana-local-validator:8899
+      - SOLANA_WS_URL=ws://solana-local-validator:8900
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - NEXT_PUBLIC_SOLANA_RPC=http://localhost:8899
+      - NEXT_PUBLIC_SOLANA_WS=ws://localhost:8900
+      - NEXT_PUBLIC_NETWORK=localnet
+    depends_on:
+      - postgres
+      - redis
+      - solana-local-validator
+    networks:
+      - pfm-network
     # Keep the container running for development
     command: sleep infinity
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # Solana local validator for testing
+  # PostgreSQL Database for wallet associations and user data
+  postgres:
+    image: postgres:15-alpine
+    container_name: pfm-postgres
+    environment:
+      POSTGRES_DB: pfm_community
+      POSTGRES_USER: pfm_user
+      POSTGRES_PASSWORD: pfm_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./backend/database/seeders:/docker-entrypoint-initdb.d/seeders:ro
+    networks:
+      - pfm-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pfm_user -d pfm_community"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for session management and wallet connection caching
+  redis:
+    image: redis:7-alpine
+    container_name: pfm-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./backend/config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - pfm-network
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Solana local validator for wallet testing and smart contracts
   solana-local-validator:
     image: solanalabs/solana:v1.17.20
     container_name: solana-local-validator
     ports:
-      - "8899:8899" # RPC
-      - "8900:8900" # Websocket
-    command: solana-test-validator --no-bpf-strict
+      - "8899:8899" # RPC endpoint for wallet connections
+      - "8900:8900" # WebSocket endpoint for real-time updates
+    volumes:
+      - solana_ledger:/solana-ledger
+    networks:
+      - pfm-network
+    environment:
+      - RUST_LOG=info
+    command: >
+      solana-test-validator
+      --ledger /solana-ledger
+      --rpc-bind-address 0.0.0.0:8899
+      --rpc-port 8899
+      --websocket-port 8900
+      --no-bpf-strict
+      --reset
+    healthcheck:
+      test: ["CMD", "solana", "cluster-version", "--url", "http://localhost:8899"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Backend API service for wallet authentication and data management
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pfm-backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      # Core service configuration
+      - NODE_ENV=development
+      - PORT=3000
+      - CONTAINER_ENV=development
+      - DOCKER_CONTAINER=true
+      - CONTAINER_NAME=pfm-backend
+      
+      # Database and cache connections
+      - POSTGRES_URL=postgresql://pfm_user:pfm_password@postgres:5432/pfm_community
+      - DATABASE_URL=postgresql://pfm_user:pfm_password@postgres:5432/pfm_community
+      - REDIS_URL=redis://redis:6379
+      
+      # Solana blockchain connections
+      - SOLANA_RPC_URL=http://solana-local-validator:8899
+      - SOLANA_WS_URL=ws://solana-local-validator:8900
+      
+      # Authentication configuration
+      - SESSION_SECRET=dev-session-secret-change-in-production
+      - JWT_SECRET=dev-jwt-secret-change-in-production
+      - WALLET_AUTH_ENABLED=true
+      - AUTH_RATE_LIMIT_MAX=5
+      - AUTH_RATE_LIMIT_WINDOW=15
+      - SESSION_MAX_AGE=86400000
+      - SESSION_RENEWAL_THRESHOLD=3600000
+      
+      # Service discovery
+      - BACKEND_SERVICE_URL=http://backend:3000
+      - AUTH_SERVICE_URL=http://backend:3000/api/auth
+      - SESSION_SERVICE_URL=http://backend:3000/api/session
+      
+      # CORS and security
+      - CORS_ORIGINS=http://localhost:3001,http://localhost:3002,http://admin-portal:3001,http://member-portal:3002
+      
+      # Health check configuration
+      - HEALTH_CHECK_TIMEOUT=5000
+      - HEALTH_CHECK_RETRIES=3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      solana-local-validator:
+        condition: service_healthy
+    networks:
+      - pfm-network
+    command: npm run dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Admin Portal container
+  admin-portal:
+    build:
+      context: ./frontend/admin
+      dockerfile: Dockerfile
+    container_name: pfm-admin-portal
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./frontend/admin:/app
+      - ./frontend/shared:/shared
+      - /app/node_modules
+    environment:
+      # Core configuration
+      - NODE_ENV=development
+      - CONTAINER_ENV=development
+      - DOCKER_CONTAINER=true
+      - CONTAINER_NAME=pfm-admin-portal
+      - NEXT_PUBLIC_CONTAINER_MODE=true
+      
+      # Service URLs
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - NEXT_PUBLIC_APP_URL=http://localhost:3001
+      - NEXT_PUBLIC_APP_DOMAIN=localhost:3001
+      
+      # Backend service discovery
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
+      - NEXT_PUBLIC_AUTH_SERVICE_URL=http://localhost:3000/api/auth
+      - NEXT_PUBLIC_SESSION_SERVICE_URL=http://localhost:3000/api/session
+      - BACKEND_SERVICE_URL=http://backend:3000
+      - AUTH_SERVICE_URL=http://backend:3000/api/auth
+      - SESSION_SERVICE_URL=http://backend:3000/api/session
+      
+      # Solana blockchain configuration
+      - NEXT_PUBLIC_SOLANA_RPC=http://localhost:8899
+      - NEXT_PUBLIC_SOLANA_WS=ws://localhost:8900
+      - NEXT_PUBLIC_NETWORK=localnet
+      
+      # Authentication configuration
+      - NEXT_PUBLIC_AUTH_RATE_LIMIT_MAX=5
+      - NEXT_PUBLIC_AUTH_RATE_LIMIT_WINDOW=15
+      - NEXT_PUBLIC_SESSION_MAX_AGE=86400000
+      - NEXT_PUBLIC_SESSION_RENEWAL_THRESHOLD=3600000
+      
+      # Health check configuration
+      - HEALTH_CHECK_TIMEOUT=5000
+      - HEALTH_CHECK_RETRIES=3
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - pfm-network
+    command: npm run dev:container
+    healthcheck:
+      test: ["CMD", "node", "/shared/docker/auth-healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Member Portal container
+  member-portal:
+    build:
+      context: ./frontend/member
+      dockerfile: Dockerfile
+    container_name: pfm-member-portal
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./frontend/member:/app
+      - ./frontend/shared:/shared
+      - /app/node_modules
+    environment:
+      # Core configuration
+      - NODE_ENV=development
+      - CONTAINER_ENV=development
+      - DOCKER_CONTAINER=true
+      - CONTAINER_NAME=pfm-member-portal
+      - NEXT_PUBLIC_CONTAINER_MODE=true
+      
+      # Service URLs
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - NEXT_PUBLIC_APP_URL=http://localhost:3002
+      - NEXT_PUBLIC_APP_DOMAIN=localhost:3002
+      
+      # Backend service discovery
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
+      - NEXT_PUBLIC_AUTH_SERVICE_URL=http://localhost:3000/api/auth
+      - NEXT_PUBLIC_SESSION_SERVICE_URL=http://localhost:3000/api/session
+      - BACKEND_SERVICE_URL=http://backend:3000
+      - AUTH_SERVICE_URL=http://backend:3000/api/auth
+      - SESSION_SERVICE_URL=http://backend:3000/api/session
+      
+      # Solana blockchain configuration
+      - NEXT_PUBLIC_SOLANA_RPC=http://localhost:8899
+      - NEXT_PUBLIC_SOLANA_WS=ws://localhost:8900
+      - NEXT_PUBLIC_NETWORK=localnet
+      
+      # Authentication configuration
+      - NEXT_PUBLIC_AUTH_RATE_LIMIT_MAX=3
+      - NEXT_PUBLIC_AUTH_RATE_LIMIT_WINDOW=15
+      - NEXT_PUBLIC_SESSION_MAX_AGE=86400000
+      - NEXT_PUBLIC_SESSION_RENEWAL_THRESHOLD=3600000
+      
+      # Health check configuration
+      - HEALTH_CHECK_TIMEOUT=5000
+      - HEALTH_CHECK_RETRIES=3
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - pfm-network
+    command: npm run dev:container
+    healthcheck:
+      test: ["CMD", "node", "/shared/docker/auth-healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  solana_ledger:
+    driver: local
+  node_modules_shared:
+    driver: local
+  node_modules_admin:
+    driver: local
+  node_modules_member:
+    driver: local
+  node_modules_backend:
+    driver: local
+
+networks:
+  pfm-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -3,7 +3,11 @@
 - `contracts/voting/src/lib.rs` - The core Solana smart contract for all on-chain logic.
 - `contracts/voting/tests/voting.ts` - TypeScript tests for the smart contract, run with `anchor test`.
 - `.devcontainer/Dockerfile` - Defines the single, unified Docker image for the development environment, containing all necessary tools (Rust, Solana, Anchor, Node.js).
-- `docker-compose.yml` - Orchestrates the development environment, launching the dev container and the local Solana test validator.
+- `docker-compose.yml` - Enhanced orchestration with wallet infrastructure services including PostgreSQL, Redis, Backend API, and frontend containers.
+- `backend/Dockerfile` - Backend API container with wallet authentication endpoints and service integration.
+- `frontend/admin/Dockerfile` - Admin portal container with wallet infrastructure and container-aware configuration.
+- `frontend/member/Dockerfile` - Member portal container with wallet infrastructure and container-aware configuration.
+- `backend/config/redis.conf` - Redis configuration optimized for wallet session management and caching.
 - `README.md` - Project documentation and setup guide for the dev container environment.
 - `backend/config/redis.js` - Redis configuration with environment-based settings and connection parameters.
 - `backend/redis/connection.js` - Redis connection management with retry logic and error handling.
@@ -43,16 +47,26 @@
 - `frontend/shared/package.json` - Shared design system component library configuration.
 - `frontend/shared/docs/design-system.md` - Comprehensive design system documentation with accessibility standards.
 - `frontend/shared/docs/containerization-integration.md` - Container-aware component architecture documentation.
+- `frontend/shared/types/wallet.ts` - TypeScript definitions for wallet connection infrastructure and state management.
+- `frontend/shared/config/wallet.ts` - Wallet configuration with multi-provider support and container-aware RPC endpoints.
+- `frontend/shared/utils/wallet.ts` - Utility functions for wallet operations, error handling, and container environment detection.
+- `frontend/shared/contexts/WalletContext.tsx` - React context for wallet state management with container integration.
+- `frontend/shared/hooks/useWallet.ts` - Custom hook providing simplified wallet functionality interface.
+- `frontend/shared/components/WalletConnection/` - Complete wallet connection UI components (Button, Modal, Status, Provider).
+- `frontend/shared/examples/wallet-integration-example.tsx` - Comprehensive examples for admin and member portal wallet integration.
 
 ### Notes
 
 - All development, testing, and interaction with the project should now be done from within the VS Code Dev Container.
 - To start the development environment, open the project in VS Code and select "Reopen in Container".
+- **NEW**: Complete containerized environment now includes PostgreSQL, Redis, Backend API, and frontend containers with wallet infrastructure integration.
+- **NEW**: Enhanced `docker-compose up -d` starts all services including wallet-enabled admin and member portals.
 - For the smart contract, use `anchor test` to run all tests. Jest instructions below apply to future backend/frontend services.
 - Unit tests should typically be placed alongside the code files they are testing (e.g., `MyComponent.tsx` and `MyComponent.test.tsx` in the same directory).
 - Use `npx jest [optional/path/to/test/file]` to run tests for backend/frontend services (to be added in future phases). Running without a path executes all tests found by the Jest configuration.
 - Integration tests are located in `backend/tests/integration/` with comprehensive coverage of API, database, cache, and authentication workflows.
 - Frontend wireframes and design system are fully containerized with service discovery, health monitoring, and performance optimization.
+- **NEW**: Wallet infrastructure (Task 4.2.1) is fully integrated with container services (Task 4.2.3) providing complete blockchain-enabled development environment.
 
 ## Tasks
 
@@ -183,10 +197,11 @@
   - [x] 4.1.2 Member Portal UI Wireframes ([task_4.1.2.md](task_4.1.2.md))
   - [x] 4.1.3 Shared Design System & Component Wireframes ([task_4.1.3.md](task_4.1.3.md))
 
-  > **Note:** Task 4.2 has been split into granular subtasks (4.2.1–4.2.2) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
+  > **Note:** Task 4.2 has been split into granular subtasks (4.2.1–4.2.3) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
 
-  - [ ] 4.2.1 Wallet Connection Infrastructure ([task_4.2.1.md](task_4.2.1.md))
-  - [ ] 4.2.2 Authentication Flows & Session Management ([task_4.2.2.md](task_4.2.2.md))
+  - [x] 4.2.1 Wallet Connection Infrastructure ([task_4.2.1.md](task_4.2.1.md))
+  - [x] 4.2.2 Authentication Flows & Session Management ([task_4.2.2.md](task_4.2.2.md))
+  - [x] 4.2.3 Container Service Integration with Wallet Infrastructure ([task_4.2.3.md](task_4.2.3.md))
 
   > **Note:** Task 4.3 has been split into granular subtasks (4.3.1–4.3.4) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
 
@@ -273,3 +288,6 @@
 > **Planned Future Phases:**
 > 
 > Tasks 4.x and beyond (Frontend, Integration, CI/CD, etc.) are planned for future development and are not yet implemented in the current codebase. These sections serve as a roadmap for upcoming work. 
+
+docker-compose up -d
+# Access: http://localhost:3001 (Admin) & http://localhost:3002 (Member) 
