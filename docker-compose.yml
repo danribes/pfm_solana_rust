@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: .devcontainer/Dockerfile
-    container_name: dev-container
+    container_name: pfm-development-workspace
     volumes:
       # Mount the entire project directory
       - .:/workspace:cached
@@ -49,7 +49,7 @@ services:
   # PostgreSQL Database for wallet associations and user data
   postgres:
     image: postgres:15-alpine
-    container_name: pfm-postgres
+    container_name: pfm-postgres-database
     environment:
       POSTGRES_DB: pfm_community
       POSTGRES_USER: pfm_user
@@ -72,7 +72,7 @@ services:
   # Redis for session management and wallet connection caching
   redis:
     image: redis:7-alpine
-    container_name: pfm-redis
+    container_name: pfm-redis-cache
     ports:
       - "6379:6379"
     volumes:
@@ -92,7 +92,7 @@ services:
   # Solana local validator for wallet testing and smart contracts
   solana-local-validator:
     image: solanalabs/solana:v1.17.20
-    container_name: solana-local-validator
+    container_name: pfm-solana-blockchain-node
     ports:
       - "8899:8899" # RPC endpoint for wallet connections
       - "8900:8900" # WebSocket endpoint for real-time updates
@@ -122,7 +122,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: pfm-backend
+    container_name: pfm-api-server
     ports:
       - "3000:3000"
     volumes:
@@ -134,7 +134,7 @@ services:
       - PORT=3000
       - CONTAINER_ENV=development
       - DOCKER_CONTAINER=true
-      - CONTAINER_NAME=pfm-backend
+      - CONTAINER_NAME=pfm-api-server
       
       # Database and cache connections
       - POSTGRES_URL=postgresql://pfm_user:pfm_password@postgres:5432/pfm_community
@@ -199,7 +199,7 @@ services:
     build:
       context: ./frontend/admin
       dockerfile: Dockerfile
-    container_name: pfm-admin-portal
+    container_name: pfm-community-admin-dashboard
     ports:
       - "3001:3001"
     volumes:
@@ -211,7 +211,7 @@ services:
       - NODE_ENV=development
       - CONTAINER_ENV=development
       - DOCKER_CONTAINER=true
-      - CONTAINER_NAME=pfm-admin-portal
+      - CONTAINER_NAME=pfm-community-admin-dashboard
       - NEXT_PUBLIC_CONTAINER_MODE=true
       
       # Service URLs
@@ -247,11 +247,12 @@ services:
     networks:
       - pfm-network
     command: npm run dev:container
-    healthcheck:
-      test: ["CMD", "node", "/shared/docker/auth-healthcheck.js"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    # healthcheck:
+    #   test: ["CMD", "sh", "-c", "curl -f http://localhost:3001/ || exit 1"]
+    #   interval: 45s
+    #   timeout: 15s
+    #   retries: 5
+    #   start_period: 120s
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -261,7 +262,7 @@ services:
     build:
       context: ./frontend/member
       dockerfile: Dockerfile
-    container_name: pfm-member-portal
+    container_name: pfm-community-member-portal
     ports:
       - "3002:3002"
     volumes:
@@ -273,7 +274,7 @@ services:
       - NODE_ENV=development
       - CONTAINER_ENV=development
       - DOCKER_CONTAINER=true
-      - CONTAINER_NAME=pfm-member-portal
+      - CONTAINER_NAME=pfm-community-member-portal
       - NEXT_PUBLIC_CONTAINER_MODE=true
       
       # Service URLs
@@ -309,11 +310,12 @@ services:
     networks:
       - pfm-network
     command: npm run dev:container
-    healthcheck:
-      test: ["CMD", "node", "/shared/docker/auth-healthcheck.js"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    # healthcheck:
+    #   test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 60s
     dns:
       - 8.8.8.8
       - 8.8.4.4

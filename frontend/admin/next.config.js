@@ -2,13 +2,19 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  transpilePackages: ['@solana/web3.js', '@solana/wallet-adapter-base', '@solana/wallet-adapter-react'],
+  transpilePackages: [
+    '@solana/web3.js',
+    '@solana/wallet-adapter-base',
+    '@solana/wallet-adapter-react',
+    '@solana/wallet-adapter-react-ui',
+    '@solana/wallet-adapter-wallets',
+  ],
   
   experimental: {
     externalDir: true,
   },
   
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, webpack }) => {
     // Handle the shared directory
     config.resolve.alias = {
       ...config.resolve.alias,
@@ -31,7 +37,16 @@ const nextConfig = {
         assert: require.resolve('assert'),
         os: require.resolve('os-browserify/browser'),
         path: require.resolve('path-browserify'),
+        buffer: require.resolve('buffer'),
       };
+
+      // Add Buffer plugin using webpack parameter
+      config.plugins.push(
+        new webpack.ProvidePlugin({
+          Buffer: ['buffer', 'Buffer'],
+          process: 'process/browser',
+        })
+      );
     }
     
     return config;
@@ -39,15 +54,10 @@ const nextConfig = {
   
   env: {
     NEXT_PUBLIC_CONTAINER_MODE: process.env.CONTAINER_MODE || 'false',
-    NEXT_PUBLIC_API_URL: process.env.API_URL || 'http://localhost:3001',
-    NEXT_PUBLIC_SOLANA_RPC: process.env.SOLANA_RPC || 'https://api.devnet.solana.com',
-    NEXT_PUBLIC_SOLANA_WS: process.env.SOLANA_WS || 'wss://api.devnet.solana.com',
-    NEXT_PUBLIC_NETWORK: process.env.NETWORK || 'devnet',
-  },
-  
-  // Allow external imports from shared directory
-  experimental: {
-    externalDir: true,
+    NEXT_PUBLIC_API_URL: process.env.API_URL || 'http://localhost:3000',
+    NEXT_PUBLIC_SOLANA_RPC: process.env.SOLANA_RPC || 'http://localhost:8899',
+    NEXT_PUBLIC_SOLANA_WS: process.env.SOLANA_WS || 'ws://localhost:8900',
+    NEXT_PUBLIC_NETWORK: process.env.NETWORK || 'localnet',
   },
 };
 

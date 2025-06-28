@@ -41,6 +41,28 @@
 - `frontend/admin/package.json` - Admin portal container-aware configuration with health monitoring.
 - `frontend/admin/docs/wireframes.md` - Comprehensive admin portal wireframes with containerization support.
 - `frontend/admin/docs/containerization-considerations.md` - Admin portal container integration documentation.
+- `frontend/admin/components/Layout/AppLayout.tsx` - Main responsive layout component with header, sidebar, and content areas for admin portal.
+- `frontend/admin/components/Layout/Header.tsx` - Navigation header with mobile menu toggle, branding, and responsive design.
+- `frontend/admin/components/Navigation/Sidebar.tsx` - Desktop sidebar navigation with 8 menu items and active state indicators.
+- `frontend/admin/components/Navigation/MobileMenu.tsx` - Mobile slide-out navigation drawer with animations and touch-friendly interface.
+- `frontend/admin/components/Dashboard/DashboardOverview.tsx` - Main dashboard container with grid layout and component organization.
+- `frontend/admin/components/Dashboard/MetricsCards.tsx` - Key metrics display with 4 statistical cards and trend indicators.
+- `frontend/admin/components/Dashboard/ActivityFeed.tsx` - Recent activity feed with timestamps and action tracking.
+- `frontend/admin/components/Dashboard/QuickActions.tsx` - Admin shortcut buttons with badges and quick access functionality.
+- `frontend/admin/components/Dashboard/SystemStatus.tsx` - Real-time service monitoring with health status indicators.
+- `frontend/admin/pages/dashboard.tsx` - Main dashboard page with authentication and wallet provider integration.
+- `frontend/admin/types/community.ts` - TypeScript definitions for community data models, configurations, and API interfaces.
+- `frontend/admin/services/communities.ts` - RESTful API service for community CRUD operations with filtering and pagination.
+- `frontend/admin/hooks/useCommunities.ts` - React hooks for community state management, creation, and analytics.
+- `frontend/admin/components/Communities/CommunityList.tsx` - Main community list view with search, filters, and pagination.
+- `frontend/admin/components/Communities/CommunityCard.tsx` - Individual community display component with actions.
+- `frontend/admin/components/Communities/CommunityFilters.tsx` - Advanced filtering interface for community management.
+- `frontend/admin/components/Communities/CommunityForm.tsx` - Comprehensive form for creating and editing communities.
+- `frontend/admin/components/Communities/Pagination.tsx` - Reusable pagination component for data lists.
+- `frontend/admin/components/UI/LoadingSpinner.tsx` - Reusable loading spinner component with multiple sizes.
+- `frontend/admin/components/UI/EmptyState.tsx` - Empty state component for no-data scenarios with actions.
+- `frontend/admin/pages/communities/index.tsx` - Main communities page with integrated list, create, and edit views.
+- `frontend/admin/utils/community.ts` - Utility functions for community validation, formatting, and calculations.
 - `frontend/member/package.json` - Member portal container-aware configuration with service discovery.
 - `frontend/member/docs/wireframes.md` - Comprehensive member portal wireframes with responsive design.
 - `frontend/member/docs/containerization-considerations.md` - Member portal container integration documentation.
@@ -205,14 +227,14 @@
 
   > **Note:** Task 4.3 has been split into granular subtasks (4.3.1–4.3.4) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
 
-  - [ ] 4.3.1 Admin Dashboard Layout & Navigation ([task_4.3.1.md](task_4.3.1.md))
-  - [ ] 4.3.2 Community Management Features ([task_4.3.2.md](task_4.3.2.md))
-  - [ ] 4.3.3 Member Approval & Management ([task_4.3.3.md](task_4.3.3.md))
+  - [x] 4.3.1 Admin Dashboard Layout & Navigation ([task_4.3.1.md](task_4.3.1.md))
+  - [x] 4.3.2 Community Management Features ([task_4.3.2.md](task_4.3.2.md))
+  - [x] 4.3.3 Member Approval & Management ([task_4.3.3.md](task_4.3.3.md))
   - [ ] 4.3.4 Analytics & Reporting Dashboard ([task_4.3.4.md](task_4.3.4.md))
 
   > **Note:** Task 4.4 has been split into granular subtasks (4.4.1–4.4.4) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
 
-  - [ ] 4.4.1 Member Portal Layout & Navigation ([task_4.4.1.md](task_4.4.1.md))
+  - [x] 4.4.1 Member Portal Layout & Navigation ([task_4.4.1.md](task_4.4.1.md))
   - [ ] 4.4.2 Community Browser & Discovery ([task_4.4.2.md](task_4.4.2.md))
   - [ ] 4.4.3 Voting Interface & Interaction ([task_4.4.3.md](task_4.4.3.md))
   - [ ] 4.4.4 Results Visualization & Analytics ([task_4.4.4.md](task_4.4.4.md))

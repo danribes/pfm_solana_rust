@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import { 
   WalletConnectionProvider, 
   WalletButton, 
   WalletModal, 
   WalletStatus, 
   useWallet 
-} from '../../shared/components/WalletConnection';
+} from '../src/components/WalletConnection';
 
 // Member-specific test component
 const MemberWalletTestComponent: React.FC = () => {
@@ -89,7 +90,6 @@ const MemberWalletTestComponent: React.FC = () => {
               variant="primary" 
               size="sm" 
               onClick={() => setIsModalOpen(true)}
-              disabled={connecting}
             />
           </div>
         </div>
@@ -187,7 +187,6 @@ const MemberWalletTestComponent: React.FC = () => {
         <h3 className="text-lg font-semibold mb-4">Member Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            disabled={!connected}
             className={`p-4 rounded-lg border text-center ${
               connected 
                 ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100' 
@@ -235,57 +234,27 @@ const MemberWalletTestComponent: React.FC = () => {
   );
 };
 
-// Main member portal test page
-export default function MemberPortalTest() {
+// Main member portal entry point - redirects to dashboard
+export default function MemberPortalHome() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Redirect to dashboard
+    router.replace('/dashboard');
+  }, [router]);
+
   return (
-    <WalletConnectionProvider
-      network="devnet"
-      autoConnect={true}
-      onConnect={(publicKey) => {
-        console.log('Member wallet connected:', publicKey);
-      }}
-      onDisconnect={() => {
-        console.log('Member wallet disconnected');
-      }}
-      onError={(error) => {
-        console.error('Member wallet error:', error);
-      }}
-    >
-      <div className="min-h-screen bg-gray-50">
-        <Head>
-          <title>PFM Member Portal - Wallet Test</title>
-          <meta name="description" content="Testing member portal wallet connection" />
-          <link rel="icon" href="/favicon.ico" />
-        </Head>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <Head>
+        <title>PFM Member Portal</title>
+        <meta name="description" content="PFM Community Management Member Portal" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
 
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <div className="flex items-center">
-                <h1 className="text-2xl font-bold text-gray-900">PFM Member Portal</h1>
-                <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded">
-                  Wallet Test
-                </span>
-              </div>
-              <div className="flex items-center space-x-4">
-                <WalletStatus variant="minimal" showNetwork={false} showAddress={true} />
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-6">
-            <h2 className="text-3xl font-bold text-gray-900">Member Dashboard</h2>
-            <p className="text-gray-600 mt-2">
-              Test member portal functionality with wallet connection.
-              Connect your wallet to access community features.
-            </p>
-          </div>
-
-          <MemberWalletTestComponent />
-        </main>
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading Member Portal...</p>
       </div>
-    </WalletConnectionProvider>
+    </div>
   );
 } 

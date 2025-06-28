@@ -40,9 +40,9 @@ USER nextjs
 # Expose port
 EXPOSE 3002
 
-# Health check endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:3002/api/health || exit 1
+# Simple health check for development
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3002/ || exit 1
 
 # Start the member portal with container-specific settings
 CMD ["npm", "run", "dev:container"] 

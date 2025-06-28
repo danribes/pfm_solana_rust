@@ -74,8 +74,7 @@ export default async function handler(
     try {
       const backendStart = Date.now();
       const backendResponse = await fetch(`${serviceUrls.backend}/health`, {
-        method: 'GET',
-        timeout: 5000
+        method: 'GET'
       });
       
       health.services.backend = {
@@ -101,8 +100,7 @@ export default async function handler(
           jsonrpc: '2.0',
           id: 1,
           method: 'getHealth'
-        }),
-        timeout: 5000
+        })
       });
       
       health.services.solana = {
