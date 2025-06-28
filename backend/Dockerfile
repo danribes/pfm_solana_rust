@@ -1,6 +1,6 @@
 # Backend API Dockerfile for PFM Community Management
 
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Set environment variables
 ENV NODE_ENV=development

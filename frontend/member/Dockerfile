@@ -1,6 +1,6 @@
 # Member Portal Dockerfile for PFM Community Management
 
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Set environment variables
 ENV NODE_ENV=development
@@ -12,6 +12,11 @@ WORKDIR /app
 
 # Install dependencies for native modules and health checks
 RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    linux-headers \
+    eudev-dev \
     curl \
     bash
 
@@ -21,14 +26,8 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy shared components and types (wallet infrastructure)
-COPY ../shared /shared
-
 # Copy application code
 COPY . .
-
-# Create symbolic link to shared components for wallet infrastructure
-RUN ln -sf /shared ./node_modules/@pfm/shared
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nextjs && \

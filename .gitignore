@@ -86,3 +86,8 @@ dump.rdb
 
 # Dev Container
 .devcontainer/ 
+# Next.js build output
+.next/
+.next/**
+frontend/*/.next/
+frontend/*/.next/**

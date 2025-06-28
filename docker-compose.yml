@@ -39,11 +39,12 @@ services:
     # Keep the container running for development
     command: sleep infinity
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
   # PostgreSQL Database for wallet associations and user data
   postgres:
@@ -76,10 +77,12 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-      - ./backend/config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      # Temporarily use default Redis config
+      # - ./backend/config/redis.conf:/usr/local/etc/redis/redis.conf:ro
     networks:
       - pfm-network
-    command: redis-server /usr/local/etc/redis/redis.conf
+    # Use default Redis configuration for now
+    # command: redis-server /usr/local/etc/redis/redis.conf
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -136,7 +139,16 @@ services:
       # Database and cache connections
       - POSTGRES_URL=postgresql://pfm_user:pfm_password@postgres:5432/pfm_community
       - DATABASE_URL=postgresql://pfm_user:pfm_password@postgres:5432/pfm_community
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=pfm_community
+      - DB_USER=pfm_user
+      - DB_PASSWORD=pfm_password
       - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
       
       # Solana blockchain connections
       - SOLANA_RPC_URL=http://solana-local-validator:8899
@@ -173,11 +185,14 @@ services:
       - pfm-network
     command: npm run dev
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
   # Admin Portal container
   admin-portal:
@@ -237,6 +252,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
   # Member Portal container
   member-portal:
@@ -296,6 +314,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
 volumes:
   postgres_data:

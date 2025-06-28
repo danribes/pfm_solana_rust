@@ -3,9 +3,9 @@
 import React, { useMemo } from 'react';
 import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { WalletProvider } from '../contexts/WalletContext';
-import { getWalletAdapters, NETWORKS, DEFAULT_NETWORK, RPC_ENDPOINTS } from '../config/wallet';
-import type { WalletError } from '../types/wallet';
+import { WalletProvider } from '../../contexts/WalletContext';
+import { getWalletAdapters, NETWORKS, DEFAULT_NETWORK, RPC_ENDPOINTS } from '../../config/wallet';
+import type { WalletError } from '../../types/wallet';
 
 // Import wallet adapter CSS
 require('@solana/wallet-adapter-react-ui/styles.css');

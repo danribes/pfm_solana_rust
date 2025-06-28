@@ -2,10 +2,10 @@
   "name": "pfm-community-backend",
   "version": "1.0.0",
   "description": "Backend API for PFM Community Management Application",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node app.js",
+    "dev": "nodemon app.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -53,5 +53,8 @@
     "sequelize"
   ],
   "author": "PFM Team",
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.18.0"
+  }
 }

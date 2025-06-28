@@ -238,9 +238,11 @@ async function initializeApp() {
     });
 
     // Start server
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Health check: http://localhost:${PORT}/health`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ PFM Community Backend API listening on port ${PORT}`);
+      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      console.log(`🔐 Auth endpoint: http://localhost:${PORT}/api/auth`);
+      console.log(`📝 Documentation: http://localhost:${PORT}/api/docs`);
     });
 
   } catch (error) {
