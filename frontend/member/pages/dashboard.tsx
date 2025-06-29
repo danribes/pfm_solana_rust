@@ -1,6 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
-import { WalletConnectionProvider } from '../src/components/WalletConnection';
+import { WalletConnectionProvider } from '../src/components/WalletConnection/WalletConnectionProvider';
 import { AppLayout } from '../src/components/Layout';
 import DashboardOverview from '../src/components/Dashboard/DashboardOverview';
 

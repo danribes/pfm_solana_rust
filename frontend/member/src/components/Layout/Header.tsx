@@ -200,7 +200,7 @@ const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
               ) : (
-                <WalletButton size="sm" variant="solid" />
+                <WalletButton size="sm" variant="primary" />
               )}
             </div>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { AppProps } from 'next/app';
-import { WalletProvider } from '../../../shared/contexts/WalletContext';
+import { WalletProvider } from '../contexts/WalletContext';
 import '../styles/globals.css';
 
 function MyApp({ Component, pageProps }: AppProps) {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useWalletContext } from '../../../../shared/contexts/WalletContext';
+import { useWalletContext } from '../../contexts/WalletContext';
 import AppLayout from '../../components/Layout/AppLayout';
 import CommunityBrowser from '../../components/Communities/CommunityBrowser';
 

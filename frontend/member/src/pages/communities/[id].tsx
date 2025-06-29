@@ -4,7 +4,6 @@ import { NextPage } from 'next';
 import Head from 'next/head';
 import AppLayout from '../../components/Layout/AppLayout';
 import CommunityDetail from '../../components/Communities/CommunityDetail';
-import LoadingSpinner from '../../components/UI/LoadingSpinner';
 import { useCommunityDetails } from '../../hooks/useCommunities';
 
 const CommunityDetailPage: NextPage = () => {
@@ -31,7 +30,7 @@ const CommunityDetailPage: NextPage = () => {
     return (
       <AppLayout>
         <div className="flex justify-center items-center py-12">
-          <LoadingSpinner size="lg" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       </AppLayout>
     );

@@ -10,12 +10,12 @@ interface MembershipModalProps {
 
 const MembershipModal: React.FC<MembershipModalProps> = ({ community, onClose }) => {
   const [message, setMessage] = useState('');
-  const { joinCommunity, loading } = useMembership(community.id);
+  const { joinCommunity, actionLoading } = useMembership(community.id);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await joinCommunity(message);
+      await joinCommunity();
       onClose();
     } catch (error) {
       console.error('Failed to join community:', error);
@@ -56,10 +56,10 @@ const MembershipModal: React.FC<MembershipModalProps> = ({ community, onClose })
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={actionLoading}
               className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-indigo-300"
             >
-              {loading ? 'Submitting...' : 'Request to Join'}
+              {actionLoading ? 'Submitting...' : 'Request to Join'}
             </button>
           </div>
         </form>

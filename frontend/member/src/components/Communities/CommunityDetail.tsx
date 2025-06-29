@@ -13,7 +13,7 @@ import {
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { Community, CommunityDetails } from '../../types/community';
 import { useMembership } from '../../hooks/useCommunities';
-import { useWalletContext } from '../../../shared/contexts/WalletContext';
+import { useWalletContext } from '../../contexts/WalletContext';
 import MembershipModal from './MembershipModal';
 import { formatDate, formatMemberCount, getCategoryIcon } from '../../utils/community';
 
@@ -29,7 +29,7 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ community }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showMembershipModal, setShowMembershipModal] = useState(false);
   const { connected } = useWalletContext();
-  const { membershipStatus, joinCommunity, leaveCommunity, loading } = useMembership(community.id);
+  const { membershipStatus, joinCommunity, leaveCommunity, loading, actionLoading } = useMembership(community.id);
 
   const tabs = [
     {
@@ -70,7 +70,7 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ community }) => {
 
   const handleLeave = () => {
     if (confirm('Are you sure you want to leave this community?')) {
-      leaveCommunity();
+      leaveCommunity(community.id);
     }
   };
 

@@ -134,11 +134,11 @@ const CommunitySearch: React.FC<CommunitySearchProps> = ({
           )}
 
           {/* Search suggestions */}
-          {searchSuggestions && searchSuggestions.length > 0 && (
+          {searchMetadata?.suggestions && searchMetadata.suggestions.length > 0 && (
             <div className="p-3 border-b border-gray-100">
               <p className="text-xs text-gray-500 mb-2">Suggestions:</p>
               <div className="space-y-1">
-                {searchSuggestions.slice(0, 5).map((suggestion, index) => (
+                {searchMetadata.suggestions.slice(0, 5).map((suggestion, index) => (
                   <button
                     key={index}
                     onClick={() => handleSuggestionClick(suggestion)}
@@ -152,13 +152,13 @@ const CommunitySearch: React.FC<CommunitySearchProps> = ({
           )}
 
           {/* Recent communities or quick results */}
-          {searchResults && searchResults.communities.length > 0 && (
+          {searchResults && searchResults.length > 0 && (
             <div className="p-3">
               <p className="text-xs text-gray-500 mb-2">
                 {searchQuery ? 'Quick results:' : 'Popular communities:'}
               </p>
               <div className="space-y-2">
-                {searchResults.communities.slice(0, 3).map(community => (
+                {searchResults.slice(0, 3).map(community => (
                   <button
                     key={community.id}
                     onClick={() => window.location.href = `/communities/${community.id}`}
@@ -195,7 +195,7 @@ const CommunitySearch: React.FC<CommunitySearchProps> = ({
           )}
 
           {/* No results */}
-          {searchQuery && searchResults && searchResults.communities.length === 0 && !searchLoading && (
+          {searchQuery && searchResults && searchResults.length === 0 && !searchLoading && (
             <div className="p-6 text-center">
               <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

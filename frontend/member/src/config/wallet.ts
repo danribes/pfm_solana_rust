@@ -3,9 +3,9 @@ import { clusterApiUrl } from '@solana/web3.js';
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
-  BackpackWalletAdapter,
-  GlowWalletAdapter,
-  SlopeWalletAdapter,
+  
+  
+  
 } from '@solana/wallet-adapter-wallets';
 import { NetworkInfo } from '../types/wallet';
 
@@ -13,9 +13,9 @@ import { NetworkInfo } from '../types/wallet';
 export const getWalletAdapters = () => [
   new PhantomWalletAdapter(),
   new SolflareWalletAdapter(),
-  new BackpackWalletAdapter(),
-  new GlowWalletAdapter(),
-  new SlopeWalletAdapter(),
+
+
+
 ];
 
 // Supported wallet configurations

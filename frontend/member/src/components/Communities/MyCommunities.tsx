@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Tab } from '@headlessui/react';
 import { useMyCommunitiesData } from '../../hooks/useCommunities';
 import CommunityCard from './CommunityCard';
-import LoadingSpinner from '../UI/LoadingSpinner';
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
@@ -10,25 +9,25 @@ function classNames(...classes: string[]) {
 
 const MyCommunities: React.FC = () => {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const { communities, pendingRequests, loading, error } = useMyCommunitiesData();
+  const { data, loading, error } = useMyCommunitiesData();
 
   const tabs = [
     {
       name: 'My Communities',
-      count: communities?.length || 0,
-      content: communities
+      count: data.active_memberships?.length || 0,
+      content: data.active_memberships
     },
     {
       name: 'Pending Requests',
-      count: pendingRequests?.length || 0,
-      content: pendingRequests
+      count: data.pending_applications?.length || 0,
+      content: data.pending_applications
     }
   ];
 
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <LoadingSpinner size="lg" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -107,4 +106,4 @@ const MyCommunities: React.FC = () => {
   );
 };
 
-export default MyCommunities; 
+export default MyCommunities;

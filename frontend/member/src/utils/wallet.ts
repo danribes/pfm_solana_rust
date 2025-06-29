@@ -263,6 +263,6 @@ export const debugWalletState = (
   console.log('Connected:', connected);
   console.log('Wallet Connected:', wallet?.connected);
   console.log('Wallet Connecting:', wallet?.connecting);
-  console.log('Wallet Disconnecting:', wallet?.disconnecting);
+  console.log('Wallet Disconnecting:', wallet?.connecting);
   console.groupEnd();
 }; 

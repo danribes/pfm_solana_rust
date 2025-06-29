@@ -188,6 +188,7 @@ export interface CommunityStats {
 // Community detail view data
 export interface CommunityDetails extends Community {
   detailed_description: string;
+  long_description?: string; // Alternative description field
   rules: string[];
   guidelines: string[];
   requirements: string[];
@@ -195,6 +196,12 @@ export interface CommunityDetails extends Community {
   featured_votes: any[]; // Will be defined in voting types
   top_contributors: CommunityMember[];
   stats: CommunityStats;
+  
+  // Additional properties used by components
+  membership_type?: "open" | "approval_required" | "invite_only";
+  rating?: number;
+  active_votes?: number;
+  status?: "active" | "inactive" | "suspended";
 }
 
 export interface CommunityActivity {

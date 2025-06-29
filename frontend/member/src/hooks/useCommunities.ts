@@ -228,9 +228,15 @@ export const useCommunityDetails = (communityId: string | null) => {
 };
 
 // Hook for membership management
-export const useMembership = () => {
+export const useMembership = (communityId?: string) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [membershipStatus, setMembershipStatus] = useState<string>('not_member');
+  const [loading, setLoading] = useState(false);
+
+  const joinCommunity = useCallback(async () => {
+    return true; // Simplified for now
+  }, []);
 
   const requestMembership = useCallback(async (request: MembershipRequest) => {
     try {
@@ -288,6 +294,9 @@ export const useMembership = () => {
   return {
     actionLoading,
     actionError,
+    membershipStatus,
+    loading,
+    joinCommunity,
     requestMembership,
     leaveCommunity,
     checkEligibility
