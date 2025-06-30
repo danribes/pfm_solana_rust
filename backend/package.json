@@ -1,7 +1,7 @@
 {
   "name": "pfm-community-backend",
   "version": "1.0.0",
-  "description": "Backend API for PFM Community Management Application",
+  "description": "Backend API for PFM Community Management Application with CI/CD Integration",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
@@ -9,14 +9,25 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:database": "jest tests/database/",
+    "test:ci": "jest --ci --coverage --forceExit --detectOpenHandles --verbose",
+    "test:unit": "jest tests/unit --verbose",
+    "test:integration": "jest tests/integration --verbose",
+    "test:api": "jest tests/api --verbose",
+    "test:database": "jest tests/database --verbose",
+    "test:auth": "jest tests/auth --verbose",
+    "test:services": "jest tests/services --verbose",
+    "test:analytics": "jest tests/analytics --verbose",
     "db:migrate": "node database/migrations/migrate.js",
     "db:rollback": "node database/migrations/rollback.js",
-    "db:seed": "node database/seeders/runSeeders.js"
+    "db:seed": "node database/seeders/runSeeders.js",
+    "db:test-setup": "node tests/utils/setupTestDatabase.js",
+    "ci:setup": "npm ci && npm run db:test-setup",
+    "ci:test": "npm run test:ci",
+    "ci:cleanup": "node tests/utils/cleanupTestData.js"
   },
   "dependencies": {
     "@project-serum/anchor": "^0.26.0",
-    "@solana/web3.js": "^1.87.6",
+    "@solana/web3.js": "^1.98.2",
     "axios": "^1.10.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
@@ -37,11 +48,13 @@
     "pg-hstore": "^2.3.4",
     "redis": "^5.5.6",
     "sequelize": "^6.37.7",
+    "tweetnacl": "^1.0.3",
     "uuid": "^11.1.0",
     "validator": "^13.11.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "js-yaml": "^4.1.0",
     "nodemon": "^3.0.2",
     "supertest": "^6.3.4"
   },
@@ -50,11 +63,11 @@
     "management",
     "api",
     "postgresql",
-    "sequelize"
+    "ci-cd"
   ],
   "author": "PFM Team",
   "license": "MIT",
   "engines": {
-    "node": ">=20.18.0"
+    "node": ">=18.0.0"
   }
 }

@@ -1,0 +1,58 @@
+name: Reusable Setup Workflow
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        required: false
+        type: string
+        default: '20.18.0'
+      cache-key-prefix:
+        required: false
+        type: string
+        default: 'pfm'
+      install-solana:
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      cache-hit:
+        description: "Whether cache was hit"
+        value: ${{ jobs.setup.outputs.cache-hit }}
+
+jobs:
+  setup:
+    name: Environment Setup
+    runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          
+      - name: Cache dependencies
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            ~/.cache
+            node_modules
+            */node_modules
+          key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-node-${{ inputs.node-version }}-${{ hashFiles('**/package-lock.json') }}
+          
+      - name: Install Solana CLI
+        if: inputs.install-solana
+        run: |
+          curl -sSfL https://release.solana.com/v1.17.20/install | sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          
+      - name: Environment validation
+        run: |
+          echo "✅ Environment setup completed"

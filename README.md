@@ -19,10 +19,11 @@ Future services, such as a web frontend and backend API, will be added and integ
     *   **Technology:** Rust, Anchor Framework.
     *   **Development:** All development and testing occurs within the provided dev container.
 
-2.  **Development Environment (`.devcontainer/`)**
-    *   **Responsibility:** Defines the Docker-based development environment.
-    *   **Core Functions:** Installs and configures Rust, Solana, Anchor, Node.js, and other required tooling.
-    *   **Technology:** Docker, VS Code Dev Containers.
+2.  **Containerized Services**
+    *   **Backend API:** Express.js server handling authentication and data management
+    *   **Admin Portal:** Next.js application for community administration
+    *   **Member Portal:** Next.js application for community members
+    *   **Supporting Services:** PostgreSQL, Redis, and Solana local validator
 
 ---
 
@@ -30,8 +31,7 @@ Future services, such as a web frontend and backend API, will be added and integ
 
 ### Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [Visual Studio Code](https://code.visualstudio.com/)
-- [VS Code Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+- [Node.js](https://nodejs.org/) (for local development)
 
 ### Setup Steps
 1.  **Clone the repository:**
@@ -39,20 +39,20 @@ Future services, such as a web frontend and backend API, will be added and integ
     git clone https://github.com/danribes/pfm_solana_rust
     cd pfm_solana_rust
     ```
-2.  **Open in VS Code:**
+2.  **Start the containerized services:**
     ```sh
-    code .
+    docker-compose up -d
     ```
-3.  **Reopen in Container:**
-    -   After opening the folder, VS Code will detect the `.devcontainer` configuration and show a notification in the bottom-right corner.
-    -   Click **"Reopen in Container"**.
-    -   VS Code will build the Docker image and launch the development environment. This may take a few minutes on the first run.
+3.  **Access the applications:**
+    -   **Backend API:** http://localhost:3000
+    -   **Admin Portal:** http://localhost:3001
+    -   **Member Portal:** http://localhost:3002
 
 ---
 
 ## Development Workflow
 
-Once the dev container is running, you have a terminal with all the necessary tools installed and configured.
+The application uses a microservices architecture with separate containers for each service. All services can be managed using Docker Compose.
 
 ### Working with the Smart Contract
 
@@ -76,9 +76,13 @@ All contract-related commands should be run from the `contracts/voting` director
     ```
 
 ### Docker Compose
-The `docker-compose.yml` file is used to orchestrate the development environment. It defines two main services:
--   `dev`: The main development container where you will work.
--   `solana-local-validator`: A standalone Solana test validator instance, managed automatically by `anchor test`.
+The `docker-compose.yml` file orchestrates all application services:
+-   `backend`: Express.js API server
+-   `admin-portal`: Next.js admin interface  
+-   `member-portal`: Next.js member interface
+-   `postgres`: PostgreSQL database
+-   `redis`: Redis cache and session store
+-   `solana-local-validator`: Solana blockchain node
 
 You can start the services manually if needed:
 ```sh
@@ -89,3 +93,23 @@ To stop the services:
 ```sh
 docker-compose down
 ```
+
+---
+
+## Documentation
+
+### Deployment & Operations
+- **[Deployment Guide](docs/deployment-guide.md)** - Comprehensive deployment procedures for all environments
+- **[Operations Runbook](docs/operations-runbook.md)** - Daily operations, incident response, and maintenance procedures  
+- **[Access & Permissions](docs/access-permissions.md)** - User roles, security policies, and access management
+- **[Monitoring & Logging](docs/monitoring-logging-guide.md)** - Observability, metrics, and log analysis procedures
+
+### Technical Documentation
+- **[Database Integration](docs/database-smart-contract-integration.md)** - Database and smart contract integration details
+- **[Middleware Architecture](docs/middleware-and-redis-architecture.md)** - Redis caching and middleware implementation
+
+### Quick Reference
+- **Health Checks:** `/health` endpoint available on all services
+- **Metrics:** Prometheus metrics at `/metrics` on backend service
+- **Monitoring:** Grafana dashboard at http://localhost:3003 (admin/admin)
+- **Logs:** Centralized logging with Loki at http://localhost:3100

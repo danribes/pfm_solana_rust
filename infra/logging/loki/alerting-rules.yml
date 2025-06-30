@@ -1,0 +1,172 @@
+groups:
+  - name: pfm-log-alerts
+    rules:
+      # High error rate alerts
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate({job=~"pfm-.*",level="error"} [5m])) by (service) 
+            / 
+            sum(rate({job=~"pfm-.*"} [5m])) by (service)
+          ) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          category: application
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "High error rate detected in {{ $labels.service }}"
+          description: "Error rate is {{ $value | humanizePercentage }} in service {{ $labels.service }}"
+
+      # Critical error burst
+      - alert: CriticalErrorBurst
+        expr: |
+          sum(rate({job=~"pfm-.*",level="error"} [1m])) by (service) > 10
+        for: 1m
+        labels:
+          severity: critical
+          category: application
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Critical error burst in {{ $labels.service }}"
+          description: "More than 10 errors per minute in service {{ $labels.service }}"
+
+      # Authentication failures
+      - alert: AuthenticationFailures
+        expr: |
+          sum(rate({job=~"pfm-.*"} |~ "(?i)(authentication|login).*(failed|error)" [5m])) by (service) > 5
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "High authentication failure rate in {{ $labels.service }}"
+          description: "More than 5 authentication failures per minute in {{ $labels.service }}"
+
+      # Security alerts
+      - alert: SecurityIncident
+        expr: |
+          sum(rate({job=~"pfm-.*",category="security",severity=~"high|critical"} [5m])) > 0
+        for: 0s
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Security incident detected"
+          description: "High or critical severity security event detected in logs"
+
+      # Database connection errors
+      - alert: DatabaseConnectionErrors
+        expr: |
+          sum(rate({job=~"pfm-.*"} |~ "(?i)database.*(connection|error)" [5m])) > 2
+        for: 1m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "Database connection errors detected"
+          description: "More than 2 database connection errors per minute"
+
+      # Blockchain transaction failures
+      - alert: BlockchainTransactionFailures
+        expr: |
+          sum(rate({job=~"pfm-.*"} |~ "(?i)(blockchain|solana|transaction).*(failed|error)" [5m])) > 3
+        for: 2m
+        labels:
+          severity: warning
+          category: blockchain
+        annotations:
+          summary: "Blockchain transaction failures detected"
+          description: "More than 3 blockchain transaction failures per minute"
+
+      # Memory leaks (JavaScript out of memory)
+      - alert: OutOfMemoryErrors
+        expr: |
+          sum(rate({job=~"pfm-.*"} |~ "(?i)(out of memory|javascript heap)" [10m])) > 0
+        for: 0s
+        labels:
+          severity: critical
+          category: performance
+        annotations:
+          summary: "Out of memory errors detected"
+          description: "JavaScript heap or out of memory errors detected"
+
+      # Slow query detection
+      - alert: SlowQueries
+        expr: |
+          sum(rate({job=~"pfm-.*"} |~ "(?i)slow query" [5m])) > 1
+        for: 3m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Slow database queries detected"
+          description: "More than 1 slow query per minute detected"
+
+      # Log volume anomaly
+      - alert: LogVolumeAnomaly
+        expr: |
+          (
+            sum(rate({job=~"pfm-.*"} [5m])) 
+            > 
+            sum(rate({job=~"pfm-.*"} [5m] offset 1h)) * 3
+          )
+        for: 5m
+        labels:
+          severity: warning
+          category: operational
+        annotations:
+          summary: "Unusual log volume detected"
+          description: "Log volume is 3x higher than usual, possible issue or attack"
+
+      # No logs received
+      - alert: NoLogsReceived
+        expr: |
+          sum(rate({job=~"pfm-.*"} [10m])) by (service) == 0
+        for: 5m
+        labels:
+          severity: warning
+          category: operational
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "No logs received from {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has not sent logs for 10 minutes"
+
+  - name: pfm-business-log-alerts
+    rules:
+      # Voting system issues
+      - alert: VotingSystemErrors
+        expr: |
+          sum(rate({job=~"pfm-.*"} |~ "(?i)voting.*(error|failed)" [5m])) > 2
+        for: 2m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "Voting system errors detected"
+          description: "More than 2 voting-related errors per minute"
+
+      # Community management issues
+      - alert: CommunityManagementErrors
+        expr: |
+          sum(rate({job=~"pfm-.*"} |~ "(?i)community.*(error|failed)" [5m])) > 1
+        for: 3m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "Community management errors detected"
+          description: "More than 1 community management error per minute"
+
+      # Wallet connection failures
+      - alert: WalletConnectionFailures
+        expr: |
+          sum(rate({job=~"pfm-.*"} |~ "(?i)wallet.*(connection|error|failed)" [5m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+          category: blockchain
+        annotations:
+          summary: "High wallet connection failure rate"
+          description: "More than 5 wallet connection failures per minute" 

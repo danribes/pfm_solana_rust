@@ -13,9 +13,9 @@ if (process.env.NODE_ENV === 'test') {
   const config = {
     host: getEnv('TEST_DB_HOST', 'localhost'),
     port: parseInt(getEnv('TEST_DB_PORT', '5432'), 10),
-    database: getEnv('TEST_DB_NAME', 'community_test_db'),
-    username: getEnv('TEST_DB_USER', 'community_test_user'),
-    password: getEnv('TEST_DB_PASSWORD', 'test_password'),
+    database: getEnv('TEST_DB_NAME', 'pfm_community'),
+    username: getEnv('TEST_DB_USER', 'pfm_user'),
+    password: getEnv('TEST_DB_PASSWORD', 'pfm_password'),
     dialect: 'postgres',
     ssl: false,
     max: 5,

@@ -1,5 +1,4 @@
 const { DataTypes } = require('sequelize');
-const bcrypt = require('bcrypt');
 
 module.exports = (sequelize) => {
   const User = sequelize.define('User', {
@@ -20,9 +19,6 @@ module.exports = (sequelize) => {
     email: {
       type: DataTypes.STRING(255),
       validate: { isEmail: true },
-    },
-    password: {
-      type: DataTypes.STRING(255),
     },
     avatar_url: DataTypes.TEXT,
     bio: DataTypes.TEXT,
@@ -52,11 +48,7 @@ module.exports = (sequelize) => {
       }
     },
     hooks: {
-      beforeSave: async (user) => {
-        if (user.changed('password') && user.password) {
-          user.password = await bcrypt.hash(user.password, 10);
-        }
-      }
+      // No password hashing needed for wallet-based authentication
     }
   });
 

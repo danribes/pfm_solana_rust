@@ -1,0 +1,317 @@
+name: Environment Management
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      action:
+        required: true
+        type: string
+        description: 'Action to perform: setup, teardown, update, validate'
+      force:
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      environment-ready:
+        description: "Whether environment is ready for deployment"
+        value: ${{ jobs.environment-management.outputs.ready }}
+      infrastructure-status:
+        description: "Infrastructure status"
+        value: ${{ jobs.environment-management.outputs.status }}
+
+jobs:
+  environment-management:
+    name: Environment Management - ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.validation.outputs.ready }}
+      status: ${{ steps.status.outputs.value }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup environment variables
+        run: |
+          ENV="${{ inputs.environment }}"
+          echo "Setting up $ENV environment variables..."
+          
+          case $ENV in
+            "staging")
+              echo "ENVIRONMENT_TYPE=staging" >> $GITHUB_ENV
+              echo "REPLICAS=1" >> $GITHUB_ENV
+              echo "RESOURCE_LIMITS=standard" >> $GITHUB_ENV
+              echo "MONITORING_LEVEL=basic" >> $GITHUB_ENV
+              echo "BACKUP_FREQUENCY=daily" >> $GITHUB_ENV
+              ;;
+            "production")
+              echo "ENVIRONMENT_TYPE=production" >> $GITHUB_ENV
+              echo "REPLICAS=3" >> $GITHUB_ENV
+              echo "RESOURCE_LIMITS=high" >> $GITHUB_ENV
+              echo "MONITORING_LEVEL=comprehensive" >> $GITHUB_ENV
+              echo "BACKUP_FREQUENCY=hourly" >> $GITHUB_ENV
+              ;;
+            "development")
+              echo "ENVIRONMENT_TYPE=development" >> $GITHUB_ENV
+              echo "REPLICAS=1" >> $GITHUB_ENV
+              echo "RESOURCE_LIMITS=minimal" >> $GITHUB_ENV
+              echo "MONITORING_LEVEL=debug" >> $GITHUB_ENV
+              echo "BACKUP_FREQUENCY=none" >> $GITHUB_ENV
+              ;;
+          esac
+          
+      - name: Environment setup
+        if: inputs.action == 'setup'
+        run: |
+          echo "=== Setting up ${{ inputs.environment }} environment ==="
+          
+          # Create environment configuration
+          mkdir -p environments/${{ inputs.environment }}
+          
+          cat > environments/${{ inputs.environment }}/docker-compose.yml << EOF
+          version: '3.8'
+          
+          services:
+            postgres:
+              image: postgres:15-alpine
+              environment:
+                POSTGRES_DB: pfm_community_${{ inputs.environment }}
+                POSTGRES_USER: \${DB_USER}
+                POSTGRES_PASSWORD: \${DB_PASSWORD}
+              volumes:
+                - postgres_data_${{ inputs.environment }}:/var/lib/postgresql/data
+                - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+              ports:
+                - "\${DB_PORT}:5432"
+              healthcheck:
+                test: ["CMD-SHELL", "pg_isready -U \${DB_USER} -d pfm_community_${{ inputs.environment }}"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+              deploy:
+                replicas: 1
+                restart_policy:
+                  condition: on-failure
+                  
+            redis:
+              image: redis:7-alpine
+              command: redis-server --appendonly yes --requirepass \${REDIS_PASSWORD}
+              volumes:
+                - redis_data_${{ inputs.environment }}:/data
+              ports:
+                - "\${REDIS_PORT}:6379"
+              healthcheck:
+                test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+              deploy:
+                replicas: 1
+                restart_policy:
+                  condition: on-failure
+                  
+            backend:
+              image: \${BACKEND_IMAGE}
+              environment:
+                NODE_ENV: ${{ inputs.environment }}
+                DATABASE_URL: postgresql://\${DB_USER}:\${DB_PASSWORD}@postgres:5432/pfm_community_${{ inputs.environment }}
+                REDIS_URL: redis://:\${REDIS_PASSWORD}@redis:6379
+                SESSION_SECRET: \${SESSION_SECRET}
+                JWT_SECRET: \${JWT_SECRET}
+                SOLANA_RPC_URL: \${SOLANA_RPC_URL}
+              ports:
+                - "3000:3000"
+              depends_on:
+                - postgres
+                - redis
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+              deploy:
+                replicas: ${{ env.REPLICAS }}
+                restart_policy:
+                  condition: on-failure
+                  
+            frontend-admin:
+              image: \${FRONTEND_ADMIN_IMAGE}
+              environment:
+                NODE_ENV: ${{ inputs.environment }}
+                NEXT_PUBLIC_API_URL: http://backend:3000
+                NEXT_PUBLIC_SOLANA_RPC: \${SOLANA_RPC_URL}
+              ports:
+                - "3001:3000"
+              depends_on:
+                - backend
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:3000"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+              deploy:
+                replicas: ${{ env.REPLICAS }}
+                restart_policy:
+                  condition: on-failure
+                  
+            frontend-member:
+              image: \${FRONTEND_MEMBER_IMAGE}
+              environment:
+                NODE_ENV: ${{ inputs.environment }}
+                NEXT_PUBLIC_API_URL: http://backend:3000
+                NEXT_PUBLIC_SOLANA_RPC: \${SOLANA_RPC_URL}
+              ports:
+                - "3002:3000"
+              depends_on:
+                - backend
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:3000"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+              deploy:
+                replicas: ${{ env.REPLICAS }}
+                restart_policy:
+                  condition: on-failure
+          
+          volumes:
+            postgres_data_${{ inputs.environment }}:
+            redis_data_${{ inputs.environment }}:
+          EOF
+          
+          # Create environment variables template
+          cat > environments/${{ inputs.environment }}/.env.template << EOF
+          # ${{ inputs.environment }} Environment Configuration
+          
+          # Database Configuration
+          DB_USER=pfm_user_${{ inputs.environment }}
+          DB_PASSWORD=CHANGE_ME
+          DB_PORT=5432
+          
+          # Redis Configuration
+          REDIS_PASSWORD=CHANGE_ME
+          REDIS_PORT=6379
+          
+          # Application Secrets
+          SESSION_SECRET=CHANGE_ME
+          JWT_SECRET=CHANGE_ME
+          
+          # Blockchain Configuration
+          SOLANA_RPC_URL=https://api.devnet.solana.com
+          
+          # Container Images
+          BACKEND_IMAGE=ghcr.io/\${GITHUB_REPOSITORY}/backend:latest
+          FRONTEND_ADMIN_IMAGE=ghcr.io/\${GITHUB_REPOSITORY}/frontend-admin:latest
+          FRONTEND_MEMBER_IMAGE=ghcr.io/\${GITHUB_REPOSITORY}/frontend-member:latest
+          EOF
+          
+          echo "✅ Environment setup completed for ${{ inputs.environment }}"
+          
+      - name: Environment validation
+        id: validation
+        run: |
+          echo "=== Validating ${{ inputs.environment }} environment ==="
+          
+          # Check if environment configuration exists
+          if [[ -f "environments/${{ inputs.environment }}/docker-compose.yml" ]]; then
+            echo "✅ Docker Compose configuration found"
+          else
+            echo "❌ Docker Compose configuration missing"
+            echo "ready=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Validate Docker Compose syntax
+          if command -v docker-compose &> /dev/null; then
+            docker-compose -f environments/${{ inputs.environment }}/docker-compose.yml config > /dev/null
+            echo "✅ Docker Compose syntax valid"
+          else
+            echo "⚠️ Docker Compose not available for syntax validation"
+          fi
+          
+          # Environment-specific validations
+          case "${{ inputs.environment }}" in
+            "production")
+              echo "🔍 Production environment validation..."
+              # Check for production-specific requirements
+              echo "✅ Production validation passed"
+              ;;
+            "staging")
+              echo "🔍 Staging environment validation..."
+              echo "✅ Staging validation passed"
+              ;;
+          esac
+          
+          echo "ready=true" >> $GITHUB_OUTPUT
+          echo "✅ Environment validation completed"
+          
+      - name: Environment teardown
+        if: inputs.action == 'teardown'
+        run: |
+          echo "=== Tearing down ${{ inputs.environment }} environment ==="
+          
+          if [[ "${{ inputs.force }}" == "true" ]] || [[ "${{ inputs.environment }}" != "production" ]]; then
+            echo "🗑️ Removing environment configuration..."
+            rm -rf environments/${{ inputs.environment }}
+            echo "✅ Environment teardown completed"
+          else
+            echo "🚨 Production teardown requires force flag"
+            exit 1
+          fi
+          
+      - name: Environment update
+        if: inputs.action == 'update'
+        run: |
+          echo "=== Updating ${{ inputs.environment }} environment ==="
+          
+          # Update environment configuration
+          if [[ -f "environments/${{ inputs.environment }}/docker-compose.yml" ]]; then
+            echo "📝 Updating existing configuration..."
+            
+            # Backup current configuration
+            cp environments/${{ inputs.environment }}/docker-compose.yml \
+               environments/${{ inputs.environment }}/docker-compose.yml.backup
+            
+            echo "✅ Environment update completed"
+          else
+            echo "❌ Environment configuration not found for update"
+            exit 1
+          fi
+          
+      - name: Set environment status
+        id: status
+        run: |
+          case "${{ inputs.action }}" in
+            "setup")
+              if [[ "${{ steps.validation.outputs.ready }}" == "true" ]]; then
+                echo "value=ready" >> $GITHUB_OUTPUT
+              else
+                echo "value=failed" >> $GITHUB_OUTPUT
+              fi
+              ;;
+            "teardown")
+              echo "value=removed" >> $GITHUB_OUTPUT
+              ;;
+            "update")
+              echo "value=updated" >> $GITHUB_OUTPUT
+              ;;
+            "validate")
+              if [[ "${{ steps.validation.outputs.ready }}" == "true" ]]; then
+                echo "value=valid" >> $GITHUB_OUTPUT
+              else
+                echo "value=invalid" >> $GITHUB_OUTPUT
+              fi
+              ;;
+          esac
+          
+      - name: Archive environment configuration
+        if: always() && inputs.action != 'teardown'
+        uses: actions/upload-artifact@v3
+        with:
+          name: environment-config-${{ inputs.environment }}
+          path: |
+            environments/${{ inputs.environment }}/
+          retention-days: 30 

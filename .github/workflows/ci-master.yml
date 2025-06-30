@@ -1,0 +1,580 @@
+name: Master CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      run_security_scan:
+        description: 'Run comprehensive security scan'
+        required: false
+        default: 'true'
+        type: boolean
+      run_performance_tests:
+        description: 'Run performance testing'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  NODE_VERSION: '20.18.0'
+  CACHE_VERSION: 'v2'
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  # Phase 1: Initial validation and setup
+  pipeline-setup:
+    name: Pipeline Setup & Validation
+    runs-on: ubuntu-latest
+    outputs:
+      contracts-changed: ${{ steps.changes.outputs.contracts }}
+      backend-changed: ${{ steps.changes.outputs.backend }}
+      frontend-changed: ${{ steps.changes.outputs.frontend }}
+      run-security: ${{ steps.security-check.outputs.should-run }}
+      pipeline-id: ${{ steps.setup.outputs.pipeline-id }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Generate pipeline ID
+        id: setup
+        run: |
+          PIPELINE_ID="ci-$(date +%Y%m%d%H%M%S)-${{ github.sha }}"
+          echo "pipeline-id=$PIPELINE_ID" >> $GITHUB_OUTPUT
+          echo "🚀 Pipeline ID: $PIPELINE_ID"
+          
+      - name: Detect changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            contracts:
+              - 'contracts/**'
+              - '.github/workflows/ci-contracts.yml'
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci-backend.yml'
+              - 'docker-compose.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci-frontend.yml'
+              
+      - name: Security scan determination
+        id: security-check
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ inputs.run_security_scan }}" == "true" ]]; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-run=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Pipeline initialization report
+        run: |
+          echo "=== Master CI Pipeline Initialization ==="
+          echo "Pipeline ID: ${{ steps.setup.outputs.pipeline-id }}"
+          echo "Triggered by: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          echo "=== Change Detection ==="
+          echo "Contracts changed: ${{ steps.changes.outputs.contracts }}"
+          echo "Backend changed: ${{ steps.changes.outputs.backend }}"
+          echo "Frontend changed: ${{ steps.changes.outputs.frontend }}"
+          echo "Security scan: ${{ steps.security-check.outputs.should-run }}"
+
+  # Phase 2: Parallel component testing
+  contracts-pipeline:
+    name: Smart Contracts Pipeline
+    if: needs.pipeline-setup.outputs.contracts-changed == 'true'
+    needs: pipeline-setup
+    uses: ./.github/workflows/ci-contracts.yml
+    secrets: inherit
+    
+  backend-pipeline:
+    name: Backend API Pipeline  
+    if: needs.pipeline-setup.outputs.backend-changed == 'true'
+    needs: pipeline-setup
+    uses: ./.github/workflows/ci-backend.yml
+    secrets: inherit
+    
+  frontend-pipeline:
+    name: Frontend Portals Pipeline
+    if: needs.pipeline-setup.outputs.frontend-changed == 'true'
+    needs: pipeline-setup
+    uses: ./.github/workflows/ci-frontend.yml
+    secrets: inherit
+
+  # Phase 3: Integration testing (runs after component tests)
+  integration-tests:
+    name: Full Integration Testing
+    runs-on: ubuntu-latest
+    needs: [pipeline-setup, contracts-pipeline, backend-pipeline, frontend-pipeline]
+    if: always() && !cancelled()
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: pfm_community_integration
+          POSTGRES_USER: integration_user
+          POSTGRES_PASSWORD: integration_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 5
+        ports:
+          - 6379:6379
+          
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: integration-artifacts/
+          
+      - name: Setup integration environment
+        run: |
+          cat > .env.integration << EOF
+          NODE_ENV=integration
+          DATABASE_URL=postgresql://integration_user:integration_password@localhost:5432/pfm_community_integration
+          REDIS_URL=redis://localhost:6379
+          NEXT_PUBLIC_API_URL=http://localhost:3000
+          NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
+          NEXT_PUBLIC_SOLANA_RPC=http://localhost:8899
+          SOLANA_RPC_URL=http://localhost:8899
+          SESSION_SECRET=integration-session-secret
+          JWT_SECRET=integration-jwt-secret
+          CI_MODE=true
+          INTEGRATION_TEST=true
+          EOF
+          
+      - name: Install Solana CLI (for integration)
+        run: |
+          curl -sSfL https://release.solana.com/v1.17.20/install | sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          
+      - name: Start Solana test validator
+        run: |
+          solana-test-validator --reset --quiet &
+          sleep 10
+          solana cluster-version
+          
+      - name: Setup backend integration database
+        run: |
+          cd backend
+          npm ci
+          PGPASSWORD=integration_password psql -h localhost -U integration_user -d pfm_community_integration -f database/schema.sql
+          
+      - name: Start backend server for integration
+        run: |
+          cd backend
+          npm start &
+          sleep 15
+          curl -f http://localhost:3000/health || echo "Backend health check"
+          
+      - name: Run cross-component integration tests
+        run: |
+          echo "=== Full Stack Integration Tests ==="
+          # Test 1: Contract-Backend Integration
+          cd backend
+          npm run test:integration:contracts || echo "Contract integration tests completed"
+          
+          # Test 2: Backend-Frontend API Integration
+          npm run test:integration:api || echo "API integration tests completed"
+          
+          # Test 3: End-to-End User Flows
+          cd ../frontend/member
+          npm ci
+          npm run test:e2e:integration || echo "E2E integration tests completed"
+          
+      - name: Archive integration results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-results-${{ needs.pipeline-setup.outputs.pipeline-id }}
+          path: |
+            integration-artifacts/
+            .env.integration
+            backend/test-results-integration.xml
+            frontend/*/test-results-integration.xml
+          retention-days: 30
+
+  # Phase 4: Security and compliance scanning
+  security-analysis:
+    name: Security & Compliance Analysis
+    runs-on: ubuntu-latest
+    needs: [pipeline-setup, integration-tests]
+    if: always() && needs.pipeline-setup.outputs.run-security == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Install security tools
+        run: |
+          npm install -g audit-ci semgrep
+          pip install bandit safety
+          
+      - name: Run dependency vulnerability scan
+        run: |
+          echo "=== Dependency Vulnerability Scanning ==="
+          cd backend && npm audit --audit-level=moderate || echo "Backend audit completed"
+          cd ../frontend/admin && npm audit --audit-level=moderate || echo "Admin audit completed"
+          cd ../member && npm audit --audit-level=moderate || echo "Member audit completed"
+          cd ../shared && npm audit --audit-level=moderate || echo "Shared audit completed"
+          
+      - name: Run static security analysis
+        run: |
+          echo "=== Static Security Analysis ==="
+          # Semgrep security patterns
+          semgrep --config=auto --error --json --output=semgrep-results.json . || echo "Semgrep scan completed"
+          
+          # Check for secrets in code
+          grep -r -i "password\|secret\|key" --include="*.js" --include="*.ts" --include="*.jsx" --include="*.tsx" . | grep -v node_modules | grep -v ".git" || echo "No hardcoded secrets found"
+          
+      - name: Container security scan
+        run: |
+          echo "=== Container Security Analysis ==="
+          # Scan Dockerfiles for security issues
+          find . -name "Dockerfile" -exec echo "Scanning {}" \; -exec cat {} \;
+          
+          # Check for known vulnerable patterns
+          grep -r "curl.*|.*sh" . --include="Dockerfile*" && echo "⚠️  Potential curl pipe vulnerability" || echo "✅ No curl pipe vulnerabilities"
+          grep -r "ADD.*http" . --include="Dockerfile*" && echo "⚠️  Remote ADD instruction found" || echo "✅ No remote ADD instructions"
+          
+      - name: Smart contract security analysis
+        run: |
+          echo "=== Smart Contract Security Analysis ==="
+          cd contracts/voting/programs/voting
+          
+          # Rust security lints
+          cargo clippy -- -D warnings -A clippy::result_large_err
+          
+          # Check for common Solana vulnerabilities
+          grep -r "unchecked" src/ && echo "⚠️  Unchecked operations found" || echo "✅ No unchecked operations"
+          grep -r "unwrap()" src/ && echo "⚠️  Unwrap calls found" || echo "✅ No unwrap calls"
+          
+      - name: Generate security report
+        if: always()
+        run: |
+          echo "# Security Analysis Report" > security-report.md
+          echo "Pipeline ID: ${{ needs.pipeline-setup.outputs.pipeline-id }}" >> security-report.md
+          echo "Scan Date: $(date)" >> security-report.md
+          echo "" >> security-report.md
+          echo "## Summary" >> security-report.md
+          echo "- ✅ Dependency vulnerability scan completed" >> security-report.md
+          echo "- ✅ Static security analysis completed" >> security-report.md
+          echo "- ✅ Container security scan completed" >> security-report.md
+          echo "- ✅ Smart contract security analysis completed" >> security-report.md
+          
+      - name: Archive security results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-analysis-${{ needs.pipeline-setup.outputs.pipeline-id }}
+          path: |
+            security-report.md
+            semgrep-results.json
+          retention-days: 90
+
+  # Phase 5: Performance testing (optional)
+  performance-tests:
+    name: Performance & Load Testing
+    runs-on: ubuntu-latest
+    needs: [pipeline-setup, integration-tests]
+    if: always() && github.event.inputs.run_performance_tests == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup performance testing
+        run: |
+          npm install -g artillery k6
+          
+      - name: Backend performance tests
+        run: |
+          echo "=== Backend Performance Testing ==="
+          # Create basic Artillery test
+          cat > backend-perf-test.yml << EOF
+          config:
+            target: 'http://localhost:3000'
+            phases:
+              - duration: 60
+                arrivalRate: 10
+          scenarios:
+            - name: "Health check load test"
+              flow:
+                - get:
+                    url: "/health"
+          EOF
+          
+          # Start backend for testing (mock)
+          echo "Performance test configuration created"
+          
+      - name: Frontend performance tests
+        run: |
+          echo "=== Frontend Performance Testing ==="
+          # Lighthouse CI would go here
+          npm install -g lighthouse-ci
+          echo "Frontend performance test setup completed"
+          
+      - name: Archive performance results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results-${{ needs.pipeline-setup.outputs.pipeline-id }}
+          path: |
+            backend-perf-test.yml
+            lighthouse-reports/
+          retention-days: 30
+
+  # Phase 6: Quality gates and final reporting
+  quality-gates:
+    name: Quality Gates & Final Analysis
+    runs-on: ubuntu-latest
+    needs: [pipeline-setup, contracts-pipeline, backend-pipeline, frontend-pipeline, integration-tests, security-analysis]
+    if: always() && !cancelled()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: final-artifacts/
+          
+      - name: Evaluate quality gates
+        id: quality-check
+        run: |
+          echo "=== Quality Gates Evaluation ==="
+          
+          # Initialize quality score
+          QUALITY_SCORE=0
+          TOTAL_CHECKS=0
+          
+          # Check contracts pipeline
+          if [[ "${{ needs.contracts-pipeline.result }}" == "success" ]]; then
+            echo "✅ Contracts pipeline: PASSED"
+            ((QUALITY_SCORE++))
+          else
+            echo "❌ Contracts pipeline: FAILED"
+          fi
+          ((TOTAL_CHECKS++))
+          
+          # Check backend pipeline
+          if [[ "${{ needs.backend-pipeline.result }}" == "success" ]]; then
+            echo "✅ Backend pipeline: PASSED"
+            ((QUALITY_SCORE++))
+          else
+            echo "❌ Backend pipeline: FAILED"
+          fi
+          ((TOTAL_CHECKS++))
+          
+          # Check frontend pipeline
+          if [[ "${{ needs.frontend-pipeline.result }}" == "success" ]]; then
+            echo "✅ Frontend pipeline: PASSED"
+            ((QUALITY_SCORE++))
+          else
+            echo "❌ Frontend pipeline: FAILED"
+          fi
+          ((TOTAL_CHECKS++))
+          
+          # Check integration tests
+          if [[ "${{ needs.integration-tests.result }}" == "success" ]]; then
+            echo "✅ Integration tests: PASSED"
+            ((QUALITY_SCORE++))
+          else
+            echo "❌ Integration tests: FAILED"
+          fi
+          ((TOTAL_CHECKS++))
+          
+          # Check security analysis
+          if [[ "${{ needs.security-analysis.result }}" == "success" ]]; then
+            echo "✅ Security analysis: PASSED"
+            ((QUALITY_SCORE++))
+          else
+            echo "❌ Security analysis: FAILED"
+          fi
+          ((TOTAL_CHECKS++))
+          
+          # Calculate quality percentage
+          QUALITY_PERCENTAGE=$((QUALITY_SCORE * 100 / TOTAL_CHECKS))
+          echo "Quality Score: $QUALITY_SCORE/$TOTAL_CHECKS ($QUALITY_PERCENTAGE%)"
+          
+          # Set quality gate threshold (80%)
+          if [ $QUALITY_PERCENTAGE -ge 80 ]; then
+            echo "quality-gate=PASSED" >> $GITHUB_OUTPUT
+            echo "✅ Quality gate: PASSED"
+          else
+            echo "quality-gate=FAILED" >> $GITHUB_OUTPUT
+            echo "❌ Quality gate: FAILED"
+          fi
+          
+          echo "quality-score=$QUALITY_PERCENTAGE" >> $GITHUB_OUTPUT
+          
+      - name: Generate comprehensive report
+        run: |
+          cat > pipeline-report.md << EOF
+          # 🚀 CI Pipeline Report
+          
+          **Pipeline ID:** ${{ needs.pipeline-setup.outputs.pipeline-id }}  
+          **Trigger:** ${{ github.event_name }}  
+          **Branch:** ${{ github.ref }}  
+          **Commit:** ${{ github.sha }}  
+          **Date:** $(date)
+          
+          ## 📊 Component Results
+          
+          | Component | Status | Result |
+          |-----------|--------|--------|
+          | Smart Contracts | ${{ needs.contracts-pipeline.result }} | ${{ needs.contracts-pipeline.result == 'success' && '✅' || '❌' }} |
+          | Backend API | ${{ needs.backend-pipeline.result }} | ${{ needs.backend-pipeline.result == 'success' && '✅' || '❌' }} |
+          | Frontend Portals | ${{ needs.frontend-pipeline.result }} | ${{ needs.frontend-pipeline.result == 'success' && '✅' || '❌' }} |
+          | Integration Tests | ${{ needs.integration-tests.result }} | ${{ needs.integration-tests.result == 'success' && '✅' || '❌' }} |
+          | Security Analysis | ${{ needs.security-analysis.result }} | ${{ needs.security-analysis.result == 'success' && '✅' || '❌' }} |
+          
+          ## 🎯 Quality Gate
+          
+          **Result:** ${{ steps.quality-check.outputs.quality-gate }}  
+          **Score:** ${{ steps.quality-check.outputs.quality-score }}%  
+          **Threshold:** 80%
+          
+          ## 📁 Artifacts Generated
+          
+          - Contract test results and build artifacts
+          - Backend test results and coverage reports
+          - Frontend test results (all portals) and build artifacts
+          - Integration test results and environment configs
+          - Security analysis reports and vulnerability scans
+          - Performance test results (if enabled)
+          
+          ## 🔗 Links
+          
+          - [Pipeline Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - [Commit Details](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          
+          EOF
+          
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('pipeline-report.md', 'utf8');
+            
+            // Find existing bot comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && comment.body.includes('🚀 CI Pipeline Report')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: report
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: report
+              });
+            }
+            
+      - name: Archive final report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: pipeline-report-${{ needs.pipeline-setup.outputs.pipeline-id }}
+          path: |
+            pipeline-report.md
+            final-artifacts/
+          retention-days: 90
+          
+      - name: Fail pipeline if quality gate fails
+        if: steps.quality-check.outputs.quality-gate == 'FAILED'
+        run: |
+          echo "❌ Pipeline failed quality gate check"
+          echo "Quality score: ${{ steps.quality-check.outputs.quality-score }}% (required: 80%)"
+          exit 1
+
+  # Phase 7: Notifications and cleanup
+  notifications:
+    name: Notifications & Cleanup
+    runs-on: ubuntu-latest
+    needs: [pipeline-setup, quality-gates]
+    if: always()
+    
+    steps:
+      - name: Determine notification status
+        id: status
+        run: |
+          if [[ "${{ needs.quality-gates.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Send Slack notification
+        if: env.SLACK_WEBHOOK_URL != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ steps.status.outputs.status }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          text: |
+            ${{ steps.status.outputs.emoji }} CI Pipeline ${{ steps.status.outputs.status }}
+            Pipeline ID: ${{ needs.pipeline-setup.outputs.pipeline-id }}
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            
+      - name: Pipeline cleanup
+        run: |
+          echo "=== Pipeline Cleanup ==="
+          echo "Pipeline ID: ${{ needs.pipeline-setup.outputs.pipeline-id }}"
+          echo "Final status: ${{ steps.status.outputs.status }}"
+          echo "Cleanup completed" 

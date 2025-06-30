@@ -1,0 +1,323 @@
+# Docker Compose Configuration for Staging Environment
+# Task 6.3.1: Staging & Production Environment Setup
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: pfm-staging-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pfm_community_staging
+      POSTGRES_USER: ${DB_USER:-pfm_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data_staging:/var/lib/postgresql/data
+      - ../../backend/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    networks:
+      - pfm_staging_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pfm_user} -d pfm_community_staging"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    labels:
+      - "traefik.enable=false"
+      - "environment=staging"
+      - "component=database"
+
+  redis:
+    image: redis:7-alpine
+    container_name: pfm-staging-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data_staging:/data
+    networks:
+      - pfm_staging_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+    labels:
+      - "traefik.enable=false"
+      - "environment=staging"
+      - "component=cache"
+
+  backend:
+    image: ${CONTAINER_REGISTRY:-ghcr.io}/pfm-community/backend:${IMAGE_TAG:-latest}
+    container_name: pfm-staging-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: staging
+      DATABASE_URL: postgresql://${DB_USER:-pfm_user}:${DB_PASSWORD}@postgres:5432/pfm_community_staging
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      SESSION_SECRET: ${SESSION_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL:-https://api.devnet.solana.com}
+      PORT: 3000
+      LOG_LEVEL: info
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001,http://localhost:3002}
+    ports:
+      - "3000:3000"
+    volumes:
+      - backend_logs:/app/logs
+    networks:
+      - pfm_staging_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend-staging.rule=Host(`api-staging.${DOMAIN_NAME:-localhost}`)"
+      - "traefik.http.routers.backend-staging.tls=true"
+      - "traefik.http.services.backend-staging.loadbalancer.server.port=3000"
+      - "environment=staging"
+      - "component=api"
+
+  frontend-admin:
+    image: ${CONTAINER_REGISTRY:-ghcr.io}/pfm-community/frontend-admin:${IMAGE_TAG:-latest}
+    container_name: pfm-staging-frontend-admin
+    restart: unless-stopped
+    environment:
+      NODE_ENV: staging
+      NEXT_PUBLIC_API_URL: ${BACKEND_URL:-http://backend:3000}
+      NEXT_PUBLIC_SOLANA_RPC: ${SOLANA_RPC_URL:-https://api.devnet.solana.com}
+      PORT: 3000
+    ports:
+      - "3001:3000"
+    networks:
+      - pfm_staging_network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin-staging.rule=Host(`admin-staging.${DOMAIN_NAME:-localhost}`)"
+      - "traefik.http.routers.admin-staging.tls=true"
+      - "traefik.http.services.admin-staging.loadbalancer.server.port=3000"
+      - "environment=staging"
+      - "component=frontend-admin"
+
+  frontend-member:
+    image: ${CONTAINER_REGISTRY:-ghcr.io}/pfm-community/frontend-member:${IMAGE_TAG:-latest}
+    container_name: pfm-staging-frontend-member
+    restart: unless-stopped
+    environment:
+      NODE_ENV: staging
+      NEXT_PUBLIC_API_URL: ${BACKEND_URL:-http://backend:3000}
+      NEXT_PUBLIC_SOLANA_RPC: ${SOLANA_RPC_URL:-https://api.devnet.solana.com}
+      PORT: 3000
+    ports:
+      - "3002:3000"
+    networks:
+      - pfm_staging_network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.member-staging.rule=Host(`app-staging.${DOMAIN_NAME:-localhost}`)"
+      - "traefik.http.routers.member-staging.tls=true"
+      - "traefik.http.services.member-staging.loadbalancer.server.port=3000"
+      - "environment=staging"
+      - "component=frontend-member"
+
+  # Reverse Proxy (Optional - for local development)
+  traefik:
+    image: traefik:v2.10
+    container_name: pfm-staging-traefik
+    restart: unless-stopped
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_letsencrypt:/letsencrypt
+    networks:
+      - pfm_staging_network
+    labels:
+      - "environment=staging"
+      - "component=proxy"
+    profiles:
+      - proxy
+
+  # Monitoring (Optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: pfm-staging-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - pfm_staging_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus-staging.rule=Host(`prometheus-staging.${DOMAIN_NAME:-localhost}`)"
+      - "environment=staging"
+      - "component=monitoring"
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: pfm-staging-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+    ports:
+      - "3003:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - pfm_staging_network
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana-staging.rule=Host(`grafana-staging.${DOMAIN_NAME:-localhost}`)"
+      - "environment=staging"
+      - "component=monitoring"
+    profiles:
+      - monitoring
+
+volumes:
+  postgres_data_staging:
+    driver: local
+    labels:
+      environment: staging
+      component: database
+
+  redis_data_staging:
+    driver: local
+    labels:
+      environment: staging
+      component: cache
+
+  backend_logs:
+    driver: local
+    labels:
+      environment: staging
+      component: logs
+
+  traefik_letsencrypt:
+    driver: local
+    labels:
+      environment: staging
+      component: ssl
+
+  prometheus_data:
+    driver: local
+    labels:
+      environment: staging
+      component: monitoring
+
+  grafana_data:
+    driver: local
+    labels:
+      environment: staging
+      component: monitoring
+
+networks:
+  pfm_staging_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+    labels:
+      environment: staging
+      project: pfm-community 

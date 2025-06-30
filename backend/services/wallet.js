@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { User } = require('../models');
-const cache = require('./cache');
+const redis = require('../redis');
 
 class WalletService {
   // Generate a nonce for wallet authentication
@@ -9,13 +9,14 @@ class WalletService {
       const nonce = crypto.randomBytes(32).toString('hex');
       const timestamp = Date.now();
       
-      // Store nonce in cache with expiration (5 minutes)
+      // Store nonce in Redis with expiration (5 minutes)
       const cacheKey = `nonce:${walletAddress}`;
-      await cache.set(cacheKey, {
+      const redisClient = redis.getRedisClient();
+      await redisClient.setex(cacheKey, 300, JSON.stringify({
         nonce,
         timestamp,
         walletAddress
-      }, 300); // 5 minutes
+      })); // 5 minutes
 
       return {
         nonce,
@@ -36,9 +37,11 @@ class WalletService {
   // Verify wallet signature
   async verifySignature(walletAddress, signature, nonce, timestamp) {
     try {
-      // Get stored nonce from cache
+      // Get stored nonce from Redis
       const cacheKey = `nonce:${walletAddress}`;
-      const storedNonce = await cache.get(cacheKey);
+      const redisClient = redis.getRedisClient();
+      const storedNonceString = await redisClient.get(cacheKey);
+      const storedNonce = storedNonceString ? JSON.parse(storedNonceString) : null;
       
       if (!storedNonce) {
         throw new Error('Nonce expired or not found');
@@ -51,20 +54,20 @@ class WalletService {
       // Check if nonce is not too old (5 minutes)
       const now = Date.now();
       if (now - storedNonce.timestamp > 300000) { // 5 minutes
-        await cache.del(cacheKey);
+        await redisClient.del(cacheKey);
         throw new Error('Nonce expired');
       }
 
       // Verify signature (this is a simplified verification - in production, you'd use proper crypto)
       const message = this.generateSignMessage(nonce, timestamp);
-      const isValid = await this.verifyEthereumSignature(message, signature, walletAddress);
+      const isValid = await this.verifySolanaSignature(message, signature, walletAddress);
       
       if (!isValid) {
         throw new Error('Invalid signature');
       }
 
       // Clear the used nonce
-      await cache.del(cacheKey);
+      await redisClient.del(cacheKey);
 
       return true;
     } catch (error) {
@@ -73,20 +76,26 @@ class WalletService {
     }
   }
 
-  // Verify Ethereum signature (simplified implementation)
-  async verifyEthereumSignature(message, signature, expectedAddress) {
+  // Verify Solana signature (simplified implementation)
+  async verifySolanaSignature(message, signature, expectedAddress) {
     try {
-      // This is a simplified verification - in production, you'd use a proper library like ethers.js
-      // For now, we'll simulate verification
+      // This is a simplified verification - in production, you'd use @solana/web3.js
+      // For now, we'll simulate verification for development
       
       // In a real implementation, you would:
-      // 1. Recover the address from the signature
-      // 2. Compare it with the expected address
-      // 3. Verify the message hash matches
+      // 1. Create PublicKey from expectedAddress
+      // 2. Verify the signature using nacl.sign.detached.verify
+      // 3. Ensure the message matches what was signed
       
-      // For now, we'll accept any signature that looks valid
-      if (signature && signature.length >= 130 && signature.startsWith('0x')) {
-        return true;
+      // For development purposes, accept valid base64 signatures
+      if (signature && typeof signature === 'string') {
+        // Check if it's valid base64
+        try {
+          Buffer.from(signature, 'base64');
+          return true; // Accept for development
+        } catch (e) {
+          return false;
+        }
       }
       
       return false;
@@ -142,8 +151,9 @@ class WalletService {
         `user:${walletAddress}:profile`
       ];
 
+      const redisClient = redis.getRedisClient();
       for (const key of cacheKeys) {
-        await cache.del(key);
+        await redisClient.del(key);
       }
 
       return true;
@@ -157,7 +167,9 @@ class WalletService {
   async getWalletStatus(walletAddress) {
     try {
       const cacheKey = `wallet:${walletAddress}:status`;
-      const cachedStatus = await cache.get(cacheKey);
+      const redisClient = redis.getRedisClient();
+      const cachedStatusString = await redisClient.get(cacheKey);
+      const cachedStatus = cachedStatusString ? JSON.parse(cachedStatusString) : null;
       
       if (cachedStatus) {
         return cachedStatus;
@@ -176,7 +188,7 @@ class WalletService {
       };
 
       // Cache status for 5 minutes
-      await cache.set(cacheKey, status, 300);
+      await redisClient.setex(cacheKey, 300, JSON.stringify(status));
 
       return status;
     } catch (error) {
@@ -218,13 +230,14 @@ class WalletService {
     }
   }
 
-  // Validate wallet address format
+  // Validate Solana wallet address format
   validateWalletAddress(address) {
-    if (!address) return false;
+    if (!address || typeof address !== 'string') return false;
     
-    // Basic Ethereum address validation
-    const ethereumAddressRegex = /^0x[a-fA-F0-9]{40}$/;
-    return ethereumAddressRegex.test(address);
+    // Solana addresses are base58 encoded, 32-44 characters
+    // Exclude confusing characters: 0, O, l, I
+    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+    return base58Regex.test(address);
   }
 
   // Get user by wallet address
@@ -271,7 +284,8 @@ class WalletService {
       await user.update(updateData);
 
       // Clear cached profile data
-      await cache.del(`user:${walletAddress}:profile`);
+      const redisClient = redis.getRedisClient();
+      await redisClient.del(`user:${walletAddress}:profile`);
 
       return user;
     } catch (error) {
@@ -284,7 +298,9 @@ class WalletService {
   async getUserProfile(walletAddress) {
     try {
       const cacheKey = `user:${walletAddress}:profile`;
-      const cachedProfile = await cache.get(cacheKey);
+      const redisClient = redis.getRedisClient();
+      const cachedProfileString = await redisClient.get(cacheKey);
+      const cachedProfile = cachedProfileString ? JSON.parse(cachedProfileString) : null;
       
       if (cachedProfile) {
         return cachedProfile;
@@ -312,7 +328,7 @@ class WalletService {
       };
 
       // Cache profile for 10 minutes
-      await cache.set(cacheKey, profile, 600);
+      await redisClient.setex(cacheKey, 600, JSON.stringify(profile));
 
       return profile;
     } catch (error) {

@@ -1,51 +1,6 @@
 version: '3.8'
 
 services:
-  # Development container service
-  dev:
-    build:
-      context: .
-      dockerfile: .devcontainer/Dockerfile
-    container_name: pfm-development-workspace
-    volumes:
-      # Mount the entire project directory
-      - .:/workspace:cached
-      - node_modules_shared:/workspace/frontend/shared/node_modules
-      - node_modules_admin:/workspace/frontend/admin/node_modules
-      - node_modules_member:/workspace/frontend/member/node_modules
-      - node_modules_backend:/workspace/backend/node_modules
-    working_dir: /workspace
-    ports:
-      - "3000:3000"  # Backend API
-      - "3001:3001"  # Admin Portal
-      - "3002:3002"  # Member Portal
-    environment:
-      - NODE_ENV=development
-      - CONTAINER_MODE=true
-      - POSTGRES_URL=postgresql://pfm_user:pfm_password@postgres:5432/pfm_community
-      - REDIS_URL=redis://redis:6379
-      - SOLANA_RPC_URL=http://solana-local-validator:8899
-      - SOLANA_WS_URL=ws://solana-local-validator:8900
-      - NEXT_PUBLIC_API_URL=http://localhost:3000
-      - NEXT_PUBLIC_SOLANA_RPC=http://localhost:8899
-      - NEXT_PUBLIC_SOLANA_WS=ws://localhost:8900
-      - NEXT_PUBLIC_NETWORK=localnet
-    depends_on:
-      - postgres
-      - redis
-      - solana-local-validator
-    networks:
-      - pfm-network
-    # Keep the container running for development
-    command: sleep infinity
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-
   # PostgreSQL Database for wallet associations and user data
   postgres:
     image: postgres:15-alpine

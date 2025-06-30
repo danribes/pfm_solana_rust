@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/auth');
 const { requireAuth } = require('../middleware/auth');
+const { walletAuthLimit, walletVotingLimit } = require('../middleware/walletAuth');
 const {
   validateWalletAddress,
+  validateWalletAddressParam,
   validateWalletSignature,
   validateUserData
 } = require('../middleware/validation');
@@ -12,6 +14,7 @@ const {
 
 // Connect wallet and authenticate
 router.post('/wallet/connect',
+  walletAuthLimit,
   validateWalletAddress,
   validateUserData,
   authController.connectWallet
@@ -19,12 +22,14 @@ router.post('/wallet/connect',
 
 // Generate nonce for wallet authentication
 router.post('/wallet/nonce',
+  walletAuthLimit,
   validateWalletAddress,
   authController.generateNonce
 );
 
 // Verify wallet signature
 router.post('/wallet/verify',
+  walletAuthLimit,
   validateWalletSignature,
   authController.verifyWalletSignature
 );
@@ -37,7 +42,7 @@ router.post('/wallet/disconnect',
 
 // Get wallet connection status
 router.get('/wallet/:walletAddress/status',
-  validateWalletAddress,
+  validateWalletAddressParam,
   authController.getWalletStatus
 );
 

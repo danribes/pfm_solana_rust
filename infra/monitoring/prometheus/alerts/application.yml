@@ -1,0 +1,152 @@
+# Application Alert Rules for PFM Community Management Application
+# Task 6.4.1: Monitoring & Alerting for All Services
+
+groups:
+  - name: pfm_application_alerts
+    rules:
+      # Service Health Alerts
+      - alert: ServiceDown
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: platform
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} on {{ $labels.instance }} has been down for more than 30 seconds"
+          runbook_url: "https://runbooks.pfm-community.com/service-down"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          team: development
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "{{ $labels.service }} has an error rate of {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: development
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "High response time on {{ $labels.service }}"
+          description: "95th percentile response time for {{ $labels.service }} is {{ $value }}s"
+
+      # Database Alerts
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: platform
+          service: postgres
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "PostgreSQL database instance {{ $labels.instance }} is down"
+
+      - alert: PostgreSQLTooManyConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+          service: postgres
+        annotations:
+          summary: "PostgreSQL too many connections"
+          description: "PostgreSQL instance {{ $labels.instance }} has {{ $value | humanizePercentage }} of max connections used"
+
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: platform
+          service: redis
+        annotations:
+          summary: "Redis instance is down"
+          description: "Redis instance {{ $labels.instance }} is down"
+
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+          service: redis
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis instance {{ $labels.instance }} memory usage is {{ $value | humanizePercentage }}"
+
+      # Business Logic Alerts
+      - alert: HighVotingErrorRate
+        expr: rate(pfm_voting_errors_total[5m]) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+          team: development
+          component: voting
+        annotations:
+          summary: "High voting error rate"
+          description: "Voting operations have an error rate of {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      - alert: WalletConnectionFailures
+        expr: rate(pfm_wallet_connection_failures_total[5m]) > 0.2
+        for: 3m
+        labels:
+          severity: warning
+          team: development
+          component: wallet
+        annotations:
+          summary: "High wallet connection failure rate"
+          description: "Wallet connection failures rate is {{ $value | humanizePercentage }}"
+
+      # Blockchain Alerts
+      - alert: SolanaRPCDown
+        expr: solana_rpc_health == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: blockchain
+          service: solana-rpc
+        annotations:
+          summary: "Solana RPC endpoint is down"
+          description: "Solana RPC endpoint {{ $labels.endpoint }} is not responding"
+
+      - alert: SolanaHighLatency
+        expr: solana_rpc_latency_seconds > 5
+        for: 3m
+        labels:
+          severity: warning
+          team: blockchain
+          service: solana-rpc
+        annotations:
+          summary: "High Solana RPC latency"
+          description: "Solana RPC latency is {{ $value }}s for {{ $labels.endpoint }}"
+
+      # Security Alerts
+      - alert: TooManyFailedLogins
+        expr: rate(pfm_failed_login_attempts_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "High number of failed login attempts"
+          description: "{{ $value }} failed login attempts per second over the last 5 minutes"
+
+      - alert: SuspiciousAPIActivity
+        expr: rate(http_requests_total{status="401"}[1m]) > 20
+        for: 1m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Suspicious API activity detected"
+          description: "High rate of 401 responses: {{ $value }} per second" 

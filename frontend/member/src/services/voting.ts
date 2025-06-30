@@ -1,549 +1,478 @@
-// Voting Service for Member Portal
-// Handles API calls to backend voting endpoints
+// Voting Service for Task 4.4.6
+// Active Polls & Voting Campaigns Display
 
 import {
+  Campaign,
+  VoteSubmissionRequest,
+  VoteSubmissionResponse,
+  UserVotingStatus,
+  VoteData,
+  VotePreview,
   VotingQuestion,
-  VotingQuestionsResponse,
-  VotingHistoryResponse,
-  CastVoteResponse,
-  VotingStatsResponse,
-  VotingAPIResponse,
-  VotingFilters,
-  CastVoteDTO,
-  CreateVotingQuestionDTO,
-  UpdateVotingQuestionDTO,
-  Vote,
-  VotingResult,
-  VotingActivity,
-  VotingUpdatePayload,
-  VotingError
-} from '../types/voting';
+  VotingOption
+} from "../types/campaign";
 
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-  pagination?: {
-    page: number;
-    limit: number;
-    total: number;
-    total_pages: number;
-  };
-}
-
-class VotingService {
+export class VotingService {
   private baseUrl: string;
-  private wsConnection: WebSocket | null = null;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectTimeout: NodeJS.Timeout | null = null;
-  private attemptReconnect?: () => void;
+  private apiKey?: string;
 
-  constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+  constructor(baseUrl: string = "/api", apiKey?: string) {
+    this.baseUrl = baseUrl;
+    this.apiKey = apiKey;
   }
 
-  private async fetchWithAuth<T>(
+  /**
+   * Get headers for API requests
+   */
+  private getHeaders(): HeadersInit {
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    if (this.apiKey) {
+      headers["Authorization"] = `Bearer ${this.apiKey}`;
+    }
+
+    // Get token from localStorage if available
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    return headers;
+  }
+
+  /**
+   * Handle API errors with detailed error messages
+   */
+  private async handleApiError(response: Response): Promise<never> {
+    const contentType = response.headers.get("content-type");
+    let errorMessage = `Voting API Error: ${response.status} ${response.statusText}`;
+
+    try {
+      if (contentType && contentType.includes("application/json")) {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } else {
+        const errorText = await response.text();
+        errorMessage = errorText || errorMessage;
+      }
+    } catch (parseError) {
+      console.error("Error parsing voting API error response:", parseError);
+    }
+
+    throw new Error(errorMessage);
+  }
+
+  /**
+   * Make authenticated API request with error handling
+   */
+  private async makeRequest<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+    const requestOptions: RequestInit = {
+      ...options,
+      headers: {
+        ...this.getHeaders(),
+        ...options.headers,
+      },
+    };
+
     try {
-      //@ts-ignore
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        credentials: 'include', // Include cookies for session
-      });
+      const response = await fetch(url, requestOptions);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
-        
-        // Handle specific voting errors
-        if (response.status === 401) {
-          throw new Error('Unauthorized: Please log in to vote');
-        } else if (response.status === 403) {
-          throw new Error('Forbidden: You do not have permission to perform this action');
-        } else if (response.status === 404) {
-          throw new Error('Voting question not found');
-        } else if (response.status === 409) {
-          throw new Error('You have already voted on this question');
-        } else if (response.status === 422) {
-          throw new Error('Invalid vote data: ' + errorMessage);
-        }
-        
-        throw new Error(errorMessage);
+        await this.handleApiError(response);
       }
 
-      return response.json();
+      const data = await response.json();
+      return data;
     } catch (error) {
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Network error: Unable to connect to voting service');
-      }
+      console.error(`Voting API request failed for ${endpoint}:`, error);
       throw error;
     }
   }
 
-  // Retry logic with exponential backoff
-  private async retryRequest<T>(
-    requestFn: () => Promise<T>,
-    maxRetries: number = 3,
-    baseDelay: number = 1000
-  ): Promise<T> {
-    let lastError: Error;
-    
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        return await requestFn();
-      } catch (error) {
-        lastError = error as Error;
-        
-        // Don't retry client errors (4xx)
-        if (error instanceof Error && error.message.includes('HTTP 4')) {
-          throw error;
-        }
-        
-        if (attempt === maxRetries) {
-          break;
-        }
-        
-        // Exponential backoff
-        const delay = baseDelay * Math.pow(2, attempt);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-    
-    throw lastError!;
-  }
+  // ===========================
+  // VOTE SUBMISSION METHODS
+  // ===========================
 
-  // Voting Questions Management
-  async getVotingQuestions(
-    filters: VotingFilters = {},
-    page: number = 1,
-    limit: number = 20
-  ): Promise<VotingQuestionsResponse> {
-    const queryParams = new URLSearchParams();
-    
-    // Add pagination
-    queryParams.append('page', page.toString());
-    queryParams.append('limit', limit.toString());
-    
-    // Add filters
-    if (filters.status && filters.status.length > 0) {
-      queryParams.append('status', filters.status.join(','));
-    }
-    if (filters.type && filters.type.length > 0) {
-      queryParams.append('type', filters.type.join(','));
-    }
-    if (filters.communityId) {
-      queryParams.append('community_id', filters.communityId);
-    }
-    if (filters.searchTerm) {
-      queryParams.append('search', filters.searchTerm);
-    }
-    if (filters.dateRange) {
-      queryParams.append('start_date', filters.dateRange.start.toISOString());
-      queryParams.append('end_date', filters.dateRange.end.toISOString());
-    }
-
-    return this.retryRequest(async () => {
-      const response = await this.fetchWithAuth<ApiResponse<VotingQuestion[]>>(
-        `/voting/questions?${queryParams.toString()}`
-      );
-
-      return {
-        questions: response.data || [],
-        pagination: {
-          page: response.pagination?.page || 1,
-          limit: response.pagination?.limit || 20,
-          total: response.pagination?.total || 0,
-          totalPages: response.pagination?.total_pages || 0
-        }
-      };
+  /**
+   * Submit votes for a campaign
+   */
+  async submitVotes(request: VoteSubmissionRequest): Promise<VoteSubmissionResponse> {
+    return this.makeRequest<VoteSubmissionResponse>("/votes/submit", {
+      method: "POST",
+      body: JSON.stringify(request),
     });
   }
 
-  async getVotingQuestion(id: string): Promise<VotingQuestion> {
-    return this.retryRequest(async () => {
-      const response = await this.fetchWithAuth<ApiResponse<VotingQuestion>>(
-        `/voting/questions/${id}`
-      );
-
-      if (!response.success || !response.data) {
-        throw new Error('Voting question not found');
-      }
-
-      return response.data;
-    });
-  }
-
-  async createVotingQuestion(questionData: CreateVotingQuestionDTO): Promise<VotingQuestion> {
-    const response = await this.fetchWithAuth<ApiResponse<VotingQuestion>>(
-      `/voting/questions`,
-      {
-        method: 'POST',
-        body: JSON.stringify(questionData)
-      }
-    );
-
-    if (!response.success || !response.data) {
-      throw new Error('Failed to create voting question');
-    }
-
-    return response.data;
-  }
-
-  async updateVotingQuestion(id: string, updates: UpdateVotingQuestionDTO): Promise<VotingQuestion> {
-    const response = await this.fetchWithAuth<ApiResponse<VotingQuestion>>(
-      `/voting/questions/${id}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify(updates)
-      }
-    );
-
-    if (!response.success || !response.data) {
-      throw new Error('Failed to update voting question');
-    }
-
-    return response.data;
-  }
-
-  async deleteVotingQuestion(id: string): Promise<boolean> {
-    const response = await this.fetchWithAuth<ApiResponse<any>>(
-      `/voting/questions/${id}`,
-      {
-        method: 'DELETE'
-      }
-    );
-
-    return response.success;
-  }
-
-  // Vote Casting Functions
-  async castVote(voteData: CastVoteDTO): Promise<CastVoteResponse> {
-    // Validate vote data before sending
-    if (!voteData.questionId || !voteData.optionIds || voteData.optionIds.length === 0) {
-      throw new Error('Invalid vote data: Question ID and option selections are required');
-    }
-
-    const response = await this.fetchWithAuth<ApiResponse<CastVoteResponse>>(
-      `/voting/questions/${voteData.questionId}/vote`,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          option_ids: voteData.optionIds,
-          metadata: voteData.metadata
-        })
-      }
-    );
-
-    if (!response.success || !response.data) {
-      throw new Error('Failed to cast vote');
-    }
-
-    return response.data;
-  }
-
-  async updateVote(questionId: string, voteData: CastVoteDTO): Promise<CastVoteResponse> {
-    const response = await this.fetchWithAuth<ApiResponse<CastVoteResponse>>(
-      `/voting/questions/${questionId}/vote`,
-      {
-        method: 'PUT',
-        body: JSON.stringify({
-          option_ids: voteData.optionIds,
-          metadata: voteData.metadata
-        })
-      }
-    );
-
-    if (!response.success || !response.data) {
-      throw new Error('Failed to update vote');
-    }
-
-    return response.data;
-  }
-
-  async deleteVote(questionId: string): Promise<boolean> {
-    const response = await this.fetchWithAuth<ApiResponse<any>>(
-      `/voting/questions/${questionId}/vote`,
-      {
-        method: 'DELETE'
-      }
-    );
-
-    return response.success;
-  }
-
-  async validateVote(questionId: string, optionIds: string[]): Promise<{
-    valid: boolean;
-    errors: string[];
-  }> {
-    try {
-      const response = await this.fetchWithAuth<ApiResponse<any>>(
-        `/voting/questions/${questionId}/validate`,
+  /**
+   * Submit single vote for a question
+   */
+  async submitSingleVote(
+    campaignId: string,
+    questionId: string,
+    optionId: string,
+    stakingAmount?: number,
+    metadata?: Record<string, any>
+  ): Promise<VoteSubmissionResponse> {
+    const request: VoteSubmissionRequest = {
+      campaignId,
+      votes: [
         {
-          method: 'POST',
-          body: JSON.stringify({ option_ids: optionIds })
+          questionId,
+          optionId,
+          stakingAmount,
+          metadata,
+        },
+      ],
+      metadata: {
+        singleVote: true,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    return this.submitVotes(request);
+  }
+
+  /**
+   * Update existing vote (if allowed by campaign configuration)
+   */
+  async updateVote(
+    voteId: string,
+    newOptionId: string,
+    metadata?: Record<string, any>
+  ): Promise<VoteSubmissionResponse> {
+    return this.makeRequest<VoteSubmissionResponse>(`/votes/${voteId}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        optionId: newOptionId,
+        metadata: {
+          ...metadata,
+          updated: true,
+          updatedAt: new Date().toISOString(),
+        },
+      }),
+    });
+  }
+
+  /**
+   * Delete vote (if allowed by campaign configuration)
+   */
+  async deleteVote(voteId: string): Promise<void> {
+    await this.makeRequest<void>(`/votes/${voteId}`, {
+      method: "DELETE",
+    });
+  }
+
+  // ===========================
+  // VOTE VALIDATION METHODS
+  // ===========================
+
+  /**
+   * Validate votes before submission
+   */
+  async validateVotes(
+    campaignId: string,
+    votes: VoteData[]
+  ): Promise<{
+    isValid: boolean;
+    errors: Record<string, string>;
+    warnings: Record<string, string>;
+  }> {
+    const response = await this.makeRequest<{
+      isValid: boolean;
+      errors: Record<string, string>;
+      warnings: Record<string, string>;
+    }>("/votes/validate", {
+      method: "POST",
+      body: JSON.stringify({
+        campaignId,
+        votes,
+      }),
+    });
+
+    return response;
+  }
+
+  /**
+   * Check eligibility to vote in campaign
+   */
+  async checkVotingEligibility(campaignId: string, userId?: string): Promise<{
+    isEligible: boolean;
+    reasons: string[];
+    missingRequirements: string[];
+  }> {
+    const endpoint = userId
+      ? `/campaigns/${campaignId}/eligibility?userId=${userId}`
+      : `/campaigns/${campaignId}/eligibility`;
+
+    return this.makeRequest<{
+      isEligible: boolean;
+      reasons: string[];
+      missingRequirements: string[];
+    }>(endpoint);
+  }
+
+  // ===========================
+  // VOTE PREVIEW METHODS
+  // ===========================
+
+  /**
+   * Generate vote preview before submission
+   */
+  generateVotePreview(
+    campaign: Campaign,
+    selectedVotes: Record<string, string>
+  ): VotePreview[] {
+    const previews: VotePreview[] = [];
+
+    campaign.questions.forEach((question) => {
+      const selectedOptionId = selectedVotes[question.id];
+      if (selectedOptionId) {
+        const selectedOption = question.options.find(
+          (option) => option.id === selectedOptionId
+        );
+
+        if (selectedOption) {
+          const preview: VotePreview = {
+            question,
+            selectedOption,
+            isValid: this.validateSingleVote(question, selectedOption),
+            warnings: this.getVoteWarnings(question, selectedOption),
+          };
+          previews.push(preview);
         }
-      );
-
-      return response.data || { valid: false, errors: ['Validation failed'] };
-    } catch (error) {
-      return {
-        valid: false,
-        errors: [error instanceof Error ? error.message : 'Validation failed']
-      };
-    }
-  }
-
-  // Voting History Functions
-  async getUserVotingHistory(
-    filters: VotingFilters = {},
-    page: number = 1,
-    limit: number = 20
-  ): Promise<VotingHistoryResponse> {
-    const queryParams = new URLSearchParams();
-    
-    queryParams.append('page', page.toString());
-    queryParams.append('limit', limit.toString());
-    
-    if (filters.communityId) {
-      queryParams.append('community_id', filters.communityId);
-    }
-    if (filters.dateRange) {
-      queryParams.append('start_date', filters.dateRange.start.toISOString());
-      queryParams.append('end_date', filters.dateRange.end.toISOString());
-    }
-
-    return this.retryRequest(async () => {
-      const response = await this.fetchWithAuth<ApiResponse<{
-        votes: Vote[];
-        questions: VotingQuestion[];
-      }>>(
-        `/voting/history?${queryParams.toString()}`
-      );
-
-      return {
-        votes: response.data?.votes || [],
-        questions: response.data?.questions || [],
-        pagination: {
-          page: response.pagination?.page || 1,
-          limit: response.pagination?.limit || 20,
-          total: response.pagination?.total || 0,
-          totalPages: response.pagination?.total_pages || 0
-        }
-      };
-    });
-  }
-
-  async getVotingResults(questionId: string): Promise<VotingResult> {
-    return this.retryRequest(async () => {
-      const response = await this.fetchWithAuth<ApiResponse<VotingResult>>(
-        `/voting/questions/${questionId}/results`
-      );
-
-      if (!response.success || !response.data) {
-        throw new Error('Failed to get voting results');
+      } else if (question.isRequired) {
+        previews.push({
+          question,
+          selectedOption: {} as VotingOption,
+          isValid: false,
+          warnings: ["This question is required but no option has been selected"],
+        });
       }
-
-      return response.data;
     });
+
+    return previews;
   }
 
-  async getVotingStats(communityId?: string): Promise<VotingStatsResponse> {
-    const queryParams = communityId ? `?community_id=${communityId}` : '';
-    
-    return this.retryRequest(async () => {
-      const response = await this.fetchWithAuth<ApiResponse<VotingStatsResponse>>(
-        `/voting/stats${queryParams}`
-      );
-
-      if (!response.success || !response.data) {
-        throw new Error('Failed to get voting statistics');
-      }
-
-      return response.data;
-    });
-  }
-
-  async getVotingActivity(
-    limit: number = 10,
-    communityId?: string
-  ): Promise<VotingActivity[]> {
-    const queryParams = new URLSearchParams();
-    queryParams.append('limit', limit.toString());
-    if (communityId) {
-      queryParams.append('community_id', communityId);
+  /**
+   * Validate a single vote selection
+   */
+  private validateSingleVote(question: VotingQuestion, option: VotingOption): boolean {
+    // Check if option belongs to question
+    const optionExists = question.options.some((q) => q.id === option.id);
+    if (!optionExists) {
+      return false;
     }
 
-    return this.retryRequest(async () => {
-      const response = await this.fetchWithAuth<ApiResponse<VotingActivity[]>>(
-        `/voting/activity?${queryParams.toString()}`
-      );
-
-      return response.data || [];
-    });
+    // Add more validation logic based on question type
+    switch (question.questionType) {
+      case "single_choice":
+      case "yes_no":
+        return true;
+      case "multiple_choice":
+        // For multiple choice, check if within allowed selections
+        return true;
+      default:
+        return true;
+    }
   }
 
-  // Real-time Updates via WebSocket
-  connectToVotingUpdates(
-    onUpdate: (payload: VotingUpdatePayload) => void,
+  /**
+   * Get warnings for vote selection
+   */
+  private getVoteWarnings(question: VotingQuestion, option: VotingOption): string[] {
+    const warnings: string[] = [];
+
+    // Check for low vote count on option
+    if (option.voteCount === 0) {
+      warnings.push("This option has not received any votes yet");
+    }
+
+    // Check for controversial options (high vote count but low percentage)
+    if (option.voteCount > 10 && option.percentage < 5) {
+      warnings.push("This appears to be a minority choice");
+    }
+
+    return warnings;
+  }
+
+  // ===========================
+  // VOTING STATISTICS METHODS
+  // ===========================
+
+  /**
+   * Get voting statistics for campaign
+   */
+  async getVotingStatistics(campaignId: string): Promise<{
+    totalVotes: number;
+    uniqueVoters: number;
+    participationRate: number;
+    questionStats: Record<string, {
+      totalVotes: number;
+      optionBreakdown: Record<string, number>;
+    }>;
+  }> {
+    return this.makeRequest<{
+      totalVotes: number;
+      uniqueVoters: number;
+      participationRate: number;
+      questionStats: Record<string, {
+        totalVotes: number;
+        optionBreakdown: Record<string, number>;
+      }>;
+    }>(`/campaigns/${campaignId}/statistics`);
+  }
+
+  /**
+   * Get user voting history
+   */
+  async getUserVotingHistory(userId?: string): Promise<{
+    votes: Array<{
+      campaignId: string;
+      campaignTitle: string;
+      questionId: string;
+      questionTitle: string;
+      optionId: string;
+      optionText: string;
+      votedAt: string;
+    }>;
+    totalVotes: number;
+    campaignsParticipated: number;
+  }> {
+    const endpoint = userId
+      ? `/votes/history?userId=${userId}`
+      : "/votes/history";
+
+    return this.makeRequest<{
+      votes: Array<{
+        campaignId: string;
+        campaignTitle: string;
+        questionId: string;
+        questionTitle: string;
+        optionId: string;
+        optionText: string;
+        votedAt: string;
+      }>;
+      totalVotes: number;
+      campaignsParticipated: number;
+    }>(endpoint);
+  }
+
+  // ===========================
+  // REAL-TIME VOTING METHODS
+  // ===========================
+
+  /**
+   * Subscribe to real-time voting updates for campaign
+   */
+  subscribeToVotingUpdates(
+    campaignId: string,
+    onUpdate: (data: {
+      questionId: string;
+      optionId: string;
+      newVoteCount: number;
+      newPercentage: number;
+    }) => void,
     onError?: (error: Error) => void
   ): () => void {
-    const wsUrl = this.baseUrl.replace('http', 'ws') + '/voting/ws';
-    
-    const connect = () => {
-      try {
-        this.wsConnection = new WebSocket(wsUrl);
+    const wsUrl = `ws://localhost:3000/ws/voting/${campaignId}`;
+    let ws: WebSocket;
 
-        this.wsConnection.onopen = () => {
-          console.log('Connected to voting updates');
-          this.reconnectAttempts = 0;
-        };
-
-        this.wsConnection.onmessage = (event) => {
-          try {
-            const payload: VotingUpdatePayload = JSON.parse(event.data);
-            onUpdate(payload);
-          } catch (error) {
-            console.error('Failed to parse voting update:', error);
-          }
-        };
-
-        this.wsConnection.onclose = () => {
-          console.log('Disconnected from voting updates');
-          this.attemptReconnect();
-        };
-
-        this.wsConnection.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          if (onError) {
-            onError(new Error('WebSocket connection error'));
-          }
-        };
-      } catch (error) {
-        console.error('Failed to connect to voting updates:', error);
-        if (onError) {
-          onError(error as Error);
-        }
-      }
-    };
-
-    const attemptReconnect = () => {
-      if (this.reconnectAttempts < this.maxReconnectAttempts) {
-        this.reconnectAttempts++;
-        const delay = Math.pow(2, this.reconnectAttempts) * 1000;
-        
-        this.reconnectTimeout = setTimeout(() => {
-          console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-          connect();
-        }, delay);
-      }
-    };
-
-    //@ts-ignore
-      this.attemptReconnect = attemptReconnect;
-    connect();
-
-    // Return disconnect function
-    return () => {
-      if (this.reconnectTimeout) {
-        clearTimeout(this.reconnectTimeout);
-      }
-      if (this.wsConnection) {
-        this.wsConnection.close();
-        this.wsConnection = null;
-      }
-    };
-  }
-
-  // Utility Functions
-  async checkVotingEligibility(questionId: string): Promise<{
-    eligible: boolean;
-    reasons: string[];
-  }> {
     try {
-      const response = await this.fetchWithAuth<ApiResponse<any>>(
-        `/voting/questions/${questionId}/eligibility`
-      );
+      ws = new WebSocket(wsUrl);
 
-      return response.data || { eligible: true, reasons: [] };
-    } catch (error) {
-      return {
-        eligible: false,
-        reasons: ['Unable to check voting eligibility']
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "vote_update") {
+            onUpdate(data);
+          }
+        } catch (error) {
+          console.error("Error parsing voting WebSocket message:", error);
+          onError?.(error as Error);
+        }
       };
+
+      ws.onerror = (event) => {
+        console.error("Voting WebSocket error:", event);
+        onError?.(new Error("Voting WebSocket connection error"));
+      };
+
+      ws.onclose = () => {
+        console.log("Voting WebSocket connection closed");
+      };
+
+    } catch (error) {
+      console.error("Error creating voting WebSocket connection:", error);
+      onError?.(error as Error);
     }
-  }
 
-  async getQuestionsByTag(tag: string, limit: number = 10): Promise<VotingQuestion[]> {
-    return this.retryRequest(async () => {
-      const response = await this.fetchWithAuth<ApiResponse<VotingQuestion[]>>(
-        `/voting/questions/by-tag/${encodeURIComponent(tag)}?limit=${limit}`
-      );
-
-      return response.data || [];
-    });
-  }
-
-  // Cache management for performance
-  private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
-
-  private getCached<T>(key: string): T | null {
-    const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.timestamp < cached.ttl) {
-      return cached.data;
-    }
-    this.cache.delete(key);
-    return null;
-  }
-
-  private setCache<T>(key: string, data: T, ttlMs: number = 300000): void { // 5 min default
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      ttl: ttlMs
-    });
-  }
-
-  async getQuestionWithCache(id: string, useCache: boolean = true): Promise<VotingQuestion> {
-    const cacheKey = `question_${id}`;
-    
-    if (useCache) {
-      const cached = this.getCached<VotingQuestion>(cacheKey);
-      if (cached) {
-        return cached;
+    return () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
       }
-    }
-
-    const question = await this.getVotingQuestion(id);
-    if (useCache) {
-      this.setCache(cacheKey, question, 60000); // 1 minute cache for active questions
-    }
-    
-    return question;
+    };
   }
 
-  // Cleanup method
-  cleanup(): void {
-    if (this.wsConnection) {
-      this.wsConnection.close();
-      this.wsConnection = null;
-    }
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-    }
-    this.cache.clear();
+  // ===========================
+  // UTILITY METHODS
+  // ===========================
+
+  /**
+   * Calculate voting power for user in campaign
+   */
+  async calculateVotingPower(
+    campaignId: string,
+    userId?: string
+  ): Promise<{
+    basePower: number;
+    stakingBonus: number;
+    roleBonus: number;
+    totalPower: number;
+    maxPossiblePower: number;
+  }> {
+    const endpoint = userId
+      ? `/campaigns/${campaignId}/voting-power?userId=${userId}`
+      : `/campaigns/${campaignId}/voting-power`;
+
+    return this.makeRequest<{
+      basePower: number;
+      stakingBonus: number;
+      roleBonus: number;
+      totalPower: number;
+      maxPossiblePower: number;
+    }>(endpoint);
+  }
+
+  /**
+   * Estimate gas cost for vote submission (for blockchain voting)
+   */
+  async estimateVotingCost(campaignId: string, votes: VoteData[]): Promise<{
+    estimatedGas: number;
+    gasPriceGwei: number;
+    estimatedCostEth: number;
+    estimatedCostUsd: number;
+  }> {
+    return this.makeRequest<{
+      estimatedGas: number;
+      gasPriceGwei: number;
+      estimatedCostEth: number;
+      estimatedCostUsd: number;
+    }>("/votes/estimate-cost", {
+      method: "POST",
+      body: JSON.stringify({
+        campaignId,
+        votes,
+      }),
+    });
   }
 }
 
 // Create and export singleton instance
-const votingService = new VotingService();
-export default votingService; 
+export const votingService = new VotingService();
+export default votingService;

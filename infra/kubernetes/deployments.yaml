@@ -1,0 +1,430 @@
+# Kubernetes Deployments for PFM Community Management Application
+# Task 6.3.1: Staging & Production Environment Setup
+
+---
+# PostgreSQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: pfm-${ENVIRONMENT}
+  labels:
+    app: postgres
+    component: database
+    environment: ${ENVIRONMENT}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        component: database
+        environment: ${ENVIRONMENT}
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "pfm_community_${ENVIRONMENT}"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        - name: POSTGRES_INITDB_ARGS
+          value: "--auth-host=scram-sha-256"
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        - name: init-scripts
+          mountPath: /docker-entrypoint-initdb.d
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: ${ENVIRONMENT == "production" ? "1Gi" : "512Mi"}
+            cpu: ${ENVIRONMENT == "production" ? "500m" : "250m"}
+          limits:
+            memory: ${ENVIRONMENT == "production" ? "2Gi" : "1Gi"}
+            cpu: ${ENVIRONMENT == "production" ? "1000m" : "500m"}
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+      - name: init-scripts
+        configMap:
+          name: postgres-init-scripts
+
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: pfm-${ENVIRONMENT}
+  labels:
+    app: redis
+    component: cache
+    environment: ${ENVIRONMENT}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        component: cache
+        environment: ${ENVIRONMENT}
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        command:
+        - redis-server
+        - --appendonly
+        - "yes"
+        - --requirepass
+        - $(REDIS_PASSWORD)
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: password
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - --raw
+            - incr
+            - ping
+          initialDelaySeconds: 15
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - --raw
+            - incr
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: ${ENVIRONMENT == "production" ? "512Mi" : "256Mi"}
+            cpu: ${ENVIRONMENT == "production" ? "250m" : "100m"}
+          limits:
+            memory: ${ENVIRONMENT == "production" ? "1Gi" : "512Mi"}
+            cpu: ${ENVIRONMENT == "production" ? "500m" : "250m"}
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: redis-pvc
+
+---
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: pfm-${ENVIRONMENT}
+  labels:
+    app: backend
+    component: api
+    environment: ${ENVIRONMENT}
+spec:
+  replicas: ${ENVIRONMENT == "production" ? 3 : 1}
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        component: api
+        environment: ${ENVIRONMENT}
+    spec:
+      containers:
+      - name: backend
+        image: ${CONTAINER_REGISTRY}/pfm-community/backend:${IMAGE_TAG}
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: ${ENVIRONMENT}
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: backend-config
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: backend-config
+              key: redis-url
+        - name: SESSION_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: backend-config
+              key: session-secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: backend-config
+              key: jwt-secret
+        - name: SOLANA_RPC_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: solana-rpc-url
+        - name: PORT
+          value: "3000"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: ${ENVIRONMENT == "production" ? "1Gi" : "512Mi"}
+            cpu: ${ENVIRONMENT == "production" ? "500m" : "250m"}
+          limits:
+            memory: ${ENVIRONMENT == "production" ? "2Gi" : "1Gi"}
+            cpu: ${ENVIRONMENT == "production" ? "1000m" : "500m"}
+
+---
+# Frontend Admin Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-admin
+  namespace: pfm-${ENVIRONMENT}
+  labels:
+    app: frontend-admin
+    component: web
+    environment: ${ENVIRONMENT}
+spec:
+  replicas: ${ENVIRONMENT == "production" ? 2 : 1}
+  selector:
+    matchLabels:
+      app: frontend-admin
+  template:
+    metadata:
+      labels:
+        app: frontend-admin
+        component: web
+        environment: ${ENVIRONMENT}
+    spec:
+      containers:
+      - name: frontend-admin
+        image: ${CONTAINER_REGISTRY}/pfm-community/frontend-admin:${IMAGE_TAG}
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: ${ENVIRONMENT}
+        - name: NEXT_PUBLIC_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: backend-api-url
+        - name: NEXT_PUBLIC_SOLANA_RPC
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: solana-rpc-url
+        - name: PORT
+          value: "3000"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: ${ENVIRONMENT == "production" ? "512Mi" : "256Mi"}
+            cpu: ${ENVIRONMENT == "production" ? "250m" : "100m"}
+          limits:
+            memory: ${ENVIRONMENT == "production" ? "1Gi" : "512Mi"}
+            cpu: ${ENVIRONMENT == "production" ? "500m" : "250m"}
+
+---
+# Frontend Member Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-member
+  namespace: pfm-${ENVIRONMENT}
+  labels:
+    app: frontend-member
+    component: web
+    environment: ${ENVIRONMENT}
+spec:
+  replicas: ${ENVIRONMENT == "production" ? 2 : 1}
+  selector:
+    matchLabels:
+      app: frontend-member
+  template:
+    metadata:
+      labels:
+        app: frontend-member
+        component: web
+        environment: ${ENVIRONMENT}
+    spec:
+      containers:
+      - name: frontend-member
+        image: ${CONTAINER_REGISTRY}/pfm-community/frontend-member:${IMAGE_TAG}
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: ${ENVIRONMENT}
+        - name: NEXT_PUBLIC_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: backend-api-url
+        - name: NEXT_PUBLIC_SOLANA_RPC
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: solana-rpc-url
+        - name: PORT
+          value: "3000"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: ${ENVIRONMENT == "production" ? "512Mi" : "256Mi"}
+            cpu: ${ENVIRONMENT == "production" ? "250m" : "100m"}
+          limits:
+            memory: ${ENVIRONMENT == "production" ? "1Gi" : "512Mi"}
+            cpu: ${ENVIRONMENT == "production" ? "500m" : "250m"}
+
+---
+# Horizontal Pod Autoscaler for Backend
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: pfm-${ENVIRONMENT}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+  minReplicas: ${ENVIRONMENT == "production" ? 2 : 1}
+  maxReplicas: ${ENVIRONMENT == "production" ? 10 : 3}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# Horizontal Pod Autoscaler for Frontend Admin
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-admin-hpa
+  namespace: pfm-${ENVIRONMENT}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend-admin
+  minReplicas: ${ENVIRONMENT == "production" ? 1 : 1}
+  maxReplicas: ${ENVIRONMENT == "production" ? 5 : 2}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+
+---
+# Horizontal Pod Autoscaler for Frontend Member
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-member-hpa
+  namespace: pfm-${ENVIRONMENT}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend-member
+  minReplicas: ${ENVIRONMENT == "production" ? 1 : 1}
+  maxReplicas: ${ENVIRONMENT == "production" ? 5 : 2}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70 

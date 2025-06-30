@@ -1,0 +1,80 @@
+# PFM Application Log Rotation Configuration
+# Task 6.4.2: Logging Best Practices & Log Management
+
+# Backend application logs
+/var/log/pfm/*.log {
+    daily
+    rotate 30
+    create 644 root root
+    dateext
+    compress
+    delaycompress
+    missingok
+    notifempty
+    sharedscripts
+    postrotate
+        # Signal applications to reopen log files if needed
+        /bin/kill -USR1 $(cat /var/run/pfm-backend.pid 2>/dev/null) 2>/dev/null || true
+    endscript
+}
+
+# Error logs - keep longer
+/var/log/pfm/error.log {
+    daily
+    rotate 60
+    create 644 root root
+    dateext
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+
+# Security logs - keep longer and handle carefully
+/var/log/pfm/security.log /var/log/pfm/audit.log {
+    daily
+    rotate 90
+    create 600 root root
+    dateext
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    # Archive security logs to secure location
+    postrotate
+        if [ -f /var/log/pfm/security.log.1.gz ]; then
+            cp /var/log/pfm/security.log.1.gz /var/log/archive/security/ 2>/dev/null || true
+        fi
+        if [ -f /var/log/pfm/audit.log.1.gz ]; then
+            cp /var/log/pfm/audit.log.1.gz /var/log/archive/audit/ 2>/dev/null || true
+        fi
+    endscript
+}
+
+# Performance logs - shorter retention
+/var/log/pfm/performance.log {
+    daily
+    rotate 14
+    create 644 root root
+    dateext
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+
+# Exception logs - keep longer for debugging
+/var/log/pfm/exceptions.log /var/log/pfm/rejections.log {
+    daily
+    rotate 30
+    create 644 root root
+    dateext
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+} 

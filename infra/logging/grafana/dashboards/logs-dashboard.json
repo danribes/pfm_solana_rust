@@ -1,0 +1,281 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "PFM Logs Dashboard",
+    "tags": ["pfm", "logs", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": [
+        {
+          "name": "environment",
+          "type": "query",
+          "query": "label_values(environment)",
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        },
+        {
+          "name": "service",
+          "type": "query", 
+          "query": "label_values(service)",
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Log Volume Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate({job=~\"pfm-.*\", environment=~\"$environment\", service=~\"$service\"} [5m])) by (service)",
+            "legendFormat": "{{ service }}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "yAxes": [
+          {
+            "label": "Logs/sec"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Error Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate({job=~\"pfm-.*\", environment=~\"$environment\", service=~\"$service\", level=\"error\"} [5m]))",
+            "legendFormat": "Error Rate"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow", 
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 5
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Log Levels Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (level) (count_over_time({job=~\"pfm-.*\", environment=~\"$environment\", service=~\"$service\"} [1h]))",
+            "legendFormat": "{{ level }}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        }
+      },
+      {
+        "id": 4,
+        "title": "Recent Error Logs",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{job=~\"pfm-.*\", environment=~\"$environment\", service=~\"$service\", level=\"error\"}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 12,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        },
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": true,
+          "enableLogDetails": true,
+          "dedupStrategy": "none"
+        }
+      },
+      {
+        "id": 5,
+        "title": "Top Error Messages",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(10, count by (message) (count_over_time({job=~\"pfm-.*\", environment=~\"$environment\", service=~\"$service\", level=\"error\"} [1h])))",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 20
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true
+              },
+              "renameByName": {
+                "message": "Error Message",
+                "Value": "Count"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Service Health Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count by (service) (count_over_time({job=~\"pfm-.*\", environment=~\"$environment\", service=~\"$service\"} [5m]))",
+            "legendFormat": "{{ service }}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 20
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "value"
+            },
+            "custom": {
+              "displayMode": "list",
+              "orientation": "horizontal"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "green",
+                  "value": 10
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Security Events",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "{job=~\"pfm-.*\", environment=~\"$environment\", category=\"security\"}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 10,
+          "w": 24,
+          "x": 0,
+          "y": 28
+        },
+        "options": {
+          "showHeader": true
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "id": true
+              },
+              "renameByName": {
+                "timestamp": "Time",
+                "level": "Level",
+                "message": "Event",
+                "service": "Service",
+                "severity": "Severity"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Performance Logs",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate({job=~\"pfm-.*\", environment=~\"$environment\", category=\"performance\"} [5m])) by (le, service))",
+            "legendFormat": "95th percentile - {{ service }}"
+          },
+          {
+            "expr": "histogram_quantile(0.50, sum(rate({job=~\"pfm-.*\", environment=~\"$environment\", category=\"performance\"} [5m])) by (le, service))",
+            "legendFormat": "50th percentile - {{ service }}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 38
+        },
+        "yAxes": [
+          {
+            "label": "Duration (ms)"
+          }
+        ]
+      }
+    ]
+  }
+} 

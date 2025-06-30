@@ -3,14 +3,15 @@ const { sequelize } = require('../models');
 // Set test environment
 process.env.NODE_ENV = 'test';
 
-// Set test database configuration
+// Use the existing development database for tests
+// This connects to the running PostgreSQL container
 process.env.TEST_DB_HOST = 'localhost';
 process.env.TEST_DB_PORT = '5432';
-process.env.TEST_DB_NAME = 'community_test_db';
-process.env.TEST_DB_USER = 'community_test_user';
-process.env.TEST_DB_PASSWORD = 'test_password';
+process.env.TEST_DB_NAME = 'pfm_community';
+process.env.TEST_DB_USER = 'pfm_user';
+process.env.TEST_DB_PASSWORD = 'pfm_password';
 
-// Set Redis configuration
+// Set Redis configuration to use the running Redis container
 process.env.REDIS_HOST = 'localhost';
 process.env.REDIS_PORT = '6379';
 

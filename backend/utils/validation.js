@@ -16,14 +16,20 @@ const validateEmail = (email) => {
 };
 
 /**
- * Validate wallet address format
+ * Validate Solana wallet address format
  * @param {string} walletAddress - Wallet address to validate
  * @returns {boolean} - True if valid, false otherwise
  */
 const validateWalletAddress = (walletAddress) => {
-  const schema = Joi.string().min(32).max(44);
-  const { error } = schema.validate(walletAddress);
-  return !error;
+  // Solana addresses are base58 encoded, 32-44 characters
+  // Exclude confusing characters: 0, O, l, I
+  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+  
+  if (!walletAddress || typeof walletAddress !== 'string') {
+    return false;
+  }
+  
+  return base58Regex.test(walletAddress);
 };
 
 /**

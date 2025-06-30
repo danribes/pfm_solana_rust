@@ -1,15 +1,31 @@
 {
+    "name": "voting-contract",
+    "version": "1.0.0",
+    "description": "Solana voting smart contract with enhanced CI/CD testing",
     "scripts": {
         "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-        "test": "mocha -t 1000000 tests/"
+        "test": "mocha -t 1000000 tests/",
+        "test:enhanced": "mocha -t 1000000 tests/enhanced-voting.ts",
+        "test:original": "mocha -t 1000000 tests/voting.ts",
+        "test:ci": "mocha -t 1000000 tests/ --reporter json > test-results.json",
+        "test:coverage": "nyc mocha -t 1000000 tests/",
+        "build": "anchor build",
+        "deploy:localnet": "anchor deploy --provider.cluster localnet",
+        "clean": "anchor clean",
+        "validate": "anchor build && npm run lint && npm run test"
     },
     "dependencies": {
         "@coral-xyz/anchor": "^0.29.0"
     },
     "devDependencies": {
+        "@types/chai": "^4.3.4",
+        "@types/mocha": "^10.0.1",
         "chai": "^4.3.4",
         "mocha": "^9.0.3",
-        "prettier": "^2.6.2"
+        "nyc": "^15.1.0",
+        "prettier": "^2.6.2",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.8.3"
     }
 }

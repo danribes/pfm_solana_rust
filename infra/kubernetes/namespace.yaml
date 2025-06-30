@@ -1,0 +1,65 @@
+# Kubernetes Namespace Configuration
+# Task 6.3.1: Staging & Production Environment Setup
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pfm-${ENVIRONMENT}
+  labels:
+    name: pfm-${ENVIRONMENT}
+    environment: ${ENVIRONMENT}
+    project: pfm-community
+    managed-by: terraform
+  annotations:
+    description: "PFM Community Management Application - ${ENVIRONMENT} Environment"
+    contact: "platform-team@pfm-community.com"
+    cost-center: "engineering"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: pfm-${ENVIRONMENT}-quota
+  namespace: pfm-${ENVIRONMENT}
+spec:
+  hard:
+    # Compute Resources
+    requests.cpu: ${ENVIRONMENT == "production" ? "4" : "2"}
+    requests.memory: ${ENVIRONMENT == "production" ? "8Gi" : "4Gi"}
+    limits.cpu: ${ENVIRONMENT == "production" ? "8" : "4"}
+    limits.memory: ${ENVIRONMENT == "production" ? "16Gi" : "8Gi"}
+    
+    # Storage Resources
+    requests.storage: ${ENVIRONMENT == "production" ? "200Gi" : "100Gi"}
+    persistentvolumeclaims: ${ENVIRONMENT == "production" ? "10" : "5"}
+    
+    # Object Counts
+    pods: ${ENVIRONMENT == "production" ? "20" : "10"}
+    services: 10
+    secrets: 20
+    configmaps: 20
+    replicationcontrollers: 5
+    
+    # Load Balancers
+    services.loadbalancers: ${ENVIRONMENT == "production" ? "3" : "1"}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: pfm-${ENVIRONMENT}-limits
+  namespace: pfm-${ENVIRONMENT}
+spec:
+  limits:
+  - default:
+      cpu: ${ENVIRONMENT == "production" ? "1000m" : "500m"}
+      memory: ${ENVIRONMENT == "production" ? "2Gi" : "1Gi"}
+    defaultRequest:
+      cpu: ${ENVIRONMENT == "production" ? "500m" : "250m"}
+      memory: ${ENVIRONMENT == "production" ? "1Gi" : "512Mi"}
+    type: Container
+  - max:
+      cpu: ${ENVIRONMENT == "production" ? "2000m" : "1000m"}
+      memory: ${ENVIRONMENT == "production" ? "4Gi" : "2Gi"}
+    min:
+      cpu: "100m"
+      memory: "128Mi"
+    type: Container 

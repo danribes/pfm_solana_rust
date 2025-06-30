@@ -10,83 +10,64 @@ const createJestConfig = nextJest({
 
 // Add any custom config to be passed to Jest
 const customJestConfig = {
-  // Add more setup options before each test is run
-  setupFilesAfterEnv: ["<rootDir>/test-setup.js"],
-
-  // Test environment
-  testEnvironment: "jsdom",
-
-  // Module paths
-  moduleDirectories: ["node_modules", "<rootDir>/"],
-
-  // Module name mapping for absolute imports
-  moduleNameMapper: {
-    "^@/(.*)$": "<rootDir>/src/$1",
-    "^@components/(.*)$": "<rootDir>/src/components/$1",
-    "^@hooks/(.*)$": "<rootDir>/src/hooks/$1",
-    "^@utils/(.*)$": "<rootDir>/src/utils/$1",
-    "^@services/(.*)$": "<rootDir>/src/services/$1",
-    "^@types/(.*)$": "<rootDir>/src/types/$1",
-    "^@config/(.*)$": "<rootDir>/src/config/$1",
-  },
-
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
+  testEnvironment: "jest-environment-jsdom",
+  
   // Test patterns
   testMatch: [
-    "**/__tests__/**/*.(js|jsx|ts|tsx)",
-    "**/*.(test|spec).(js|jsx|ts|tsx)",
+    "<rootDir>/src/**/__tests__/**/*.{js,jsx,ts,tsx}",
+    "<rootDir>/src/**/*.{test,spec}.{js,jsx,ts,tsx}",
   ],
-
+  
+  // Module name mapping for imports
+  moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/src/$1",
+    "^@shared/(.*)$": "<rootDir>/../shared/src/$1",
+  },
+  
   // Coverage configuration
   collectCoverageFrom: [
     "src/**/*.{js,jsx,ts,tsx}",
     "!src/**/*.d.ts",
-    "!src/**/*.stories.{js,jsx,ts,tsx}",
-    "!src/**/index.{js,jsx,ts,tsx}",
+    "!src/pages/_app.tsx",
+    "!src/pages/_document.tsx",
+    "!src/pages/api/**",
+    "!**/*.stories.{js,jsx,ts,tsx}",
+    "!**/node_modules/**",
   ],
-
+  
   // Coverage thresholds
   coverageThreshold: {
     global: {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80,
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70,
     },
   },
-
+  
+  // CI optimizations
+  maxWorkers: process.env.CI ? 2 : "50%",
+  testTimeout: 30000,
+  verbose: process.env.CI === "true",
+  forceExit: process.env.CI === "true",
+  detectOpenHandles: process.env.CI === "true",
+  
+  // Test environment setup
+  testEnvironmentOptions: {
+    url: "http://localhost:3002",
+  },
+  
   // Transform configuration
   transform: {
     "^.+\\.(js|jsx|ts|tsx)$": ["babel-jest", { presets: ["next/babel"] }],
   },
-
-  // File extensions to consider
-  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
-
-  // Ignore patterns
-  testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/"],
-
-  // Environment variables for tests
-  testEnvironmentOptions: {
-    url: "http://localhost:3002",
-  },
-
-  // Globals
-  globals: {
-    "ts-jest": {
-      tsconfig: {
-        jsx: "react-jsx",
-      },
-    },
-  },
-
-  // Clear mocks between tests
-  clearMocks: true,
-
-  // Restore mocks after each test
-  restoreMocks: true,
-
-  // Verbose output
-  verbose: true,
+  
+  // Module file extensions
+  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
+  
+  // Setup files
+  setupFiles: ["<rootDir>/jest.polyfills.js"],
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

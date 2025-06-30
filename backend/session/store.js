@@ -23,11 +23,26 @@ class SessionStore {
       // Get Redis client
       this.redisClient = redis.getRedisClient();
       
-      // Create Redis store configuration - simplified to avoid syntax errors
+      // Wait for Redis client to be ready
+      if (!redis.isRedisConnected()) {
+        console.log('Waiting for Redis connection...');
+        await new Promise((resolve) => {
+          const checkConnection = () => {
+            if (redis.isRedisConnected()) {
+              resolve();
+            } else {
+              setTimeout(checkConnection, 100);
+            }
+          };
+          checkConnection();
+        });
+      }
+
+      // Create Redis store configuration for connect-redis v9
       const storeConfig = {
         client: this.redisClient,
         prefix: this.sessionPrefix,
-        ttl: this.sessionTimeout / 1000, // Convert to seconds
+        ttl: Math.floor(this.sessionTimeout / 1000), // Convert to seconds and ensure integer
       };
 
       // Create Redis store instance

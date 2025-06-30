@@ -1,0 +1,157 @@
+# Prometheus Configuration for PFM Community Management Application
+# Task 6.4.1: Monitoring & Alerting for All Services
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'pfm-community'
+    environment: '${ENVIRONMENT:-staging}'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "alerts/*.yml"
+
+# Scrape configuration for monitoring targets
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  # Node Exporter for host metrics (if available)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Backend API monitoring
+  - job_name: 'pfm-backend'
+    static_configs:
+      - targets: ['pfm-${ENVIRONMENT:-staging}-backend:3000']
+    metrics_path: /api/metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    params:
+      format: ['prometheus']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: pfm-${ENVIRONMENT:-staging}-backend:3000
+
+  # Frontend Admin Portal monitoring
+  - job_name: 'pfm-frontend-admin'
+    static_configs:
+      - targets: ['pfm-${ENVIRONMENT:-staging}-frontend-admin:3000']
+    metrics_path: /api/metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Frontend Member Portal monitoring
+  - job_name: 'pfm-frontend-member'
+    static_configs:
+      - targets: ['pfm-${ENVIRONMENT:-staging}-frontend-member:3000']
+    metrics_path: /api/metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # PostgreSQL monitoring
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'pfm-${ENVIRONMENT:-staging}-postgres'
+
+  # Redis monitoring
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'pfm-${ENVIRONMENT:-staging}-redis'
+
+  # Docker container monitoring
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Traefik monitoring (if using Traefik)
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['pfm-${ENVIRONMENT:-staging}-traefik:8080']
+    metrics_path: /metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Solana blockchain monitoring (custom exporter)
+  - job_name: 'solana-exporter'
+    static_configs:
+      - targets: ['solana-exporter:9568']
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    params:
+      network: ['${SOLANA_NETWORK:-devnet}']
+
+  # Application-specific health checks
+  - job_name: 'pfm-health-checks'
+    static_configs:
+      - targets: 
+        - 'pfm-${ENVIRONMENT:-staging}-backend:3000'
+        - 'pfm-${ENVIRONMENT:-staging}-frontend-admin:3000'
+        - 'pfm-${ENVIRONMENT:-staging}-frontend-member:3000'
+    metrics_path: /health
+    scrape_interval: 15s
+    scrape_timeout: 5s
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: 'pfm-${ENVIRONMENT:-staging}-(.*):(\d+)'
+        target_label: service
+        replacement: '${1}'
+      - source_labels: [__address__]
+        regex: 'pfm-${ENVIRONMENT:-staging}-(.*):(\d+)'
+        target_label: port
+        replacement: '${2}'
+
+  # Custom business metrics
+  - job_name: 'pfm-business-metrics'
+    static_configs:
+      - targets: ['pfm-${ENVIRONMENT:-staging}-backend:3000']
+    metrics_path: /api/metrics/business
+    scrape_interval: 60s
+    scrape_timeout: 10s
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus/data
+    retention.time: 30d
+    retention.size: 10GB
+    wal-compression: true
+
+# Performance tuning
+query:
+  max_concurrency: 20
+  timeout: 2m
+  max_samples: 50000000 

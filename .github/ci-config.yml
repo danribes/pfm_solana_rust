@@ -1,0 +1,53 @@
+# CI Pipeline Configuration
+# Task 6.2.1: CI Pipeline Structure & Workflow Design
+
+pipeline:
+  name: "PFM Containerized Application CI"
+  version: "1.0.0"
+  
+triggers:
+  branches:
+    - main
+    - develop
+  paths:
+    - "contracts/**"
+    - "backend/**" 
+    - "frontend/**"
+    - ".github/workflows/**"
+
+components:
+  contracts:
+    workflow: "ci-contracts.yml"
+    timeout: 15
+    retry: 2
+    
+  backend:
+    workflow: "ci-backend.yml"
+    timeout: 10
+    retry: 2
+    
+  frontend:
+    workflow: "ci-frontend.yml"
+    timeout: 12
+    retry: 2
+
+quality_gates:
+  threshold: 80
+  required_checks:
+    - contracts_tests
+    - backend_tests
+    - frontend_tests
+    - integration_tests
+    - security_scan
+    
+notifications:
+  slack: true
+  email: false
+  pr_comments: true
+  
+artifacts:
+  retention_days:
+    test_results: 30
+    coverage: 30
+    security: 90
+    performance: 30

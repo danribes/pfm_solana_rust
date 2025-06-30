@@ -1,0 +1,230 @@
+# AlertManager Configuration for PFM Community Management Application
+# Task 6.4.1: Monitoring & Alerting for All Services
+
+global:
+  smtp_smarthost: '${SMTP_HOST:-localhost:587}'
+  smtp_from: '${ALERT_FROM_EMAIL:-alerts@pfm-community.com}'
+  smtp_auth_username: '${SMTP_USERNAME:-}'
+  smtp_auth_password: '${SMTP_PASSWORD:-}'
+
+# Templates for alert notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Routing tree for alerts
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: 'default'
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      repeat_interval: 5m
+
+    # Security alerts - immediate notification to security team
+    - match:
+        team: security
+      receiver: 'security-alerts'
+      group_wait: 0s
+      repeat_interval: 10m
+
+    # Platform/Infrastructure alerts
+    - match:
+        team: platform
+      receiver: 'platform-alerts'
+      group_wait: 30s
+      repeat_interval: 1h
+
+    # Development team alerts
+    - match:
+        team: development
+      receiver: 'development-alerts'
+      group_wait: 1m
+      repeat_interval: 2h
+
+    # Blockchain-specific alerts
+    - match:
+        team: blockchain
+      receiver: 'blockchain-alerts'
+      group_wait: 30s
+      repeat_interval: 30m
+
+    # Staging environment - less frequent notifications
+    - match:
+        environment: staging
+      receiver: 'staging-alerts'
+      group_wait: 2m
+      repeat_interval: 4h
+
+# Alert receivers and notification channels
+receivers:
+  - name: 'default'
+    email_configs:
+      - to: '${DEFAULT_ALERT_EMAIL:-admin@pfm-community.com}'
+        subject: 'PFM Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Environment: {{ .Labels.environment }}
+          Service: {{ .Labels.service }}
+          Severity: {{ .Labels.severity }}
+          {{ end }}
+
+  - name: 'critical-alerts'
+    email_configs:
+      - to: '${CRITICAL_ALERT_EMAIL:-critical@pfm-community.com}'
+        subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        body: |
+          CRITICAL ALERT - Immediate Action Required
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Environment: {{ .Labels.environment }}
+          Service: {{ .Labels.service }}
+          Started: {{ .StartsAt }}
+          {{ if .Annotations.runbook_url }}
+          Runbook: {{ .Annotations.runbook_url }}
+          {{ end }}
+          {{ end }}
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#critical-alerts'
+        title: '🚨 Critical Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Environment:* {{ .Labels.environment }}
+          *Service:* {{ .Labels.service }}
+          {{ end }}
+        color: 'danger'
+
+  - name: 'security-alerts'
+    email_configs:
+      - to: '${SECURITY_ALERT_EMAIL:-security@pfm-community.com}'
+        subject: '🔒 Security Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          SECURITY ALERT - Potential Security Incident
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Environment: {{ .Labels.environment }}
+          Service: {{ .Labels.service }}
+          Started: {{ .StartsAt }}
+          {{ end }}
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#security-alerts'
+        title: '🔒 Security Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Environment:* {{ .Labels.environment }}
+          *Service:* {{ .Labels.service }}
+          {{ end }}
+        color: 'warning'
+
+  - name: 'platform-alerts'
+    email_configs:
+      - to: '${PLATFORM_ALERT_EMAIL:-platform@pfm-community.com}'
+        subject: '⚙️ Platform Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Platform/Infrastructure Alert
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Environment: {{ .Labels.environment }}
+          Service: {{ .Labels.service }}
+          Started: {{ .StartsAt }}
+          {{ end }}
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#platform-alerts'
+        title: '⚙️ Platform Alert: {{ .GroupLabels.alertname }}'
+        color: 'warning'
+
+  - name: 'development-alerts'
+    email_configs:
+      - to: '${DEV_ALERT_EMAIL:-dev@pfm-community.com}'
+        subject: '🐛 Development Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Development Team Alert
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Environment: {{ .Labels.environment }}
+          Service: {{ .Labels.service }}
+          Started: {{ .StartsAt }}
+          {{ end }}
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#dev-alerts'
+        title: '🐛 Dev Alert: {{ .GroupLabels.alertname }}'
+        color: 'warning'
+
+  - name: 'blockchain-alerts'
+    email_configs:
+      - to: '${BLOCKCHAIN_ALERT_EMAIL:-blockchain@pfm-community.com}'
+        subject: '⛓️ Blockchain Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Blockchain/Solana Alert
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Environment: {{ .Labels.environment }}
+          Service: {{ .Labels.service }}
+          Started: {{ .StartsAt }}
+          {{ end }}
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#blockchain-alerts'
+        title: '⛓️ Blockchain Alert: {{ .GroupLabels.alertname }}'
+        color: 'warning'
+
+  - name: 'staging-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#staging-alerts'
+        title: '🧪 Staging Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Environment:* {{ .Labels.environment }}
+          *Service:* {{ .Labels.service }}
+          {{ end }}
+        color: 'good'
+
+# Inhibit rules to prevent spam
+inhibit_rules:
+  # Inhibit all other alerts when service is down
+  - source_match:
+      alertname: ServiceDown
+    target_match:
+      service: '{{ .Labels.service }}'
+    equal: ['service', 'instance']
+
+  # Inhibit warning alerts when critical alerts are firing
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: ['alertname', 'instance']
+
+  # Inhibit individual component alerts when entire service is down
+  - source_match:
+      alertname: ServiceDown
+    target_match_re:
+      alertname: '(HighErrorRate|HighResponseTime|HighCPUUsage|HighMemoryUsage)'
+    equal: ['instance'] 

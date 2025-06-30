@@ -1,0 +1,151 @@
+# CD Pipeline Configuration
+# Task 6.2.2: CD Pipeline Structure & Deployment Automation
+
+pipeline:
+  name: "PFM Containerized Application CD"
+  version: "1.0.0"
+  description: "Continuous Deployment pipeline for staging and production environments"
+
+triggers:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "contracts/**"
+      - "docker-compose.yml"
+      - "docker-compose.prod.yml"
+      - ".github/workflows/cd-*.yml"
+  
+  manual:
+    environments:
+      - staging
+      - production
+    options:
+      force_deploy: false
+      run_migrations: true
+      rollback_enabled: true
+
+deployment:
+  strategy: "blue-green"
+  registry: "ghcr.io"
+  image_prefix: "${GITHUB_REPOSITORY}"
+  
+  environments:
+    staging:
+      url: "https://staging.pfm-app.com"
+      replicas: 1
+      health_check_timeout: 120
+      migration_timeout: 300
+      auto_deploy: true
+      approval_required: false
+      
+    production:
+      url: "https://pfm-app.com"
+      replicas: 2
+      health_check_timeout: 300
+      migration_timeout: 600
+      auto_deploy: false
+      approval_required: true
+      blue_green_enabled: true
+
+components:
+  backend:
+    dockerfile: "backend/Dockerfile"
+    context: "backend"
+    ports:
+      - "3000:3000"
+    health_endpoint: "/health"
+    
+  frontend-admin:
+    dockerfile: "frontend/admin/Dockerfile"
+    context: "frontend/admin"
+    ports:
+      - "3001:3000"
+    health_endpoint: "/"
+    
+  frontend-member:
+    dockerfile: "frontend/member/Dockerfile"
+    context: "frontend/member"
+    ports:
+      - "3002:3000"
+    health_endpoint: "/"
+
+security:
+  vulnerability_scanning: true
+  security_gates: true
+  container_scanning:
+    tool: "trivy"
+    severity_threshold: "HIGH,CRITICAL"
+    fail_on_vulnerabilities: false
+    
+  secrets_management:
+    staging:
+      - "DATABASE_URL_STAGING"
+      - "REDIS_URL_STAGING"
+      - "SESSION_SECRET_STAGING"
+      - "JWT_SECRET_STAGING"
+      - "SOLANA_RPC_URL_STAGING"
+    production:
+      - "DATABASE_URL_PRODUCTION"
+      - "REDIS_URL_PRODUCTION"
+      - "SESSION_SECRET_PRODUCTION"
+      - "JWT_SECRET_PRODUCTION"
+      - "SOLANA_RPC_URL_PRODUCTION"
+
+quality_gates:
+  enabled: true
+  threshold: 85
+  required_checks:
+    - container_builds
+    - security_scan
+    - infrastructure_setup
+    - health_checks
+  
+rollback:
+  enabled: true
+  automatic: true
+  timeout: 300
+  health_check_retries: 5
+
+notifications:
+  slack:
+    enabled: true
+    webhook_secret: "SLACK_WEBHOOK_URL"
+    channels:
+      success: "#deployments"
+      failure: "#alerts"
+      
+  email:
+    enabled: false
+    
+  github:
+    pr_comments: true
+    deployment_status: true
+
+monitoring:
+  health_checks:
+    enabled: true
+    interval: 30
+    timeout: 10
+    retries: 3
+    
+  performance:
+    baseline_testing: true
+    load_testing: false
+    
+  logging:
+    level: "info"
+    retention_days: 30
+
+artifacts:
+  retention_days:
+    container_images: 30
+    deployment_reports: 90
+    security_scans: 90
+    performance_reports: 30
+    
+  storage:
+    container_registry: "ghcr.io"
+    artifact_store: "github_artifacts" 

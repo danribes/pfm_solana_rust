@@ -1,0 +1,103 @@
+# Log Shipper Configuration
+# Task 6.4.2: Logging Best Practices & Log Management
+
+# Shipping configuration
+shipping:
+  enabled: ${SHIPPING_ENABLED:-false}
+  batchSize: 100
+  flushInterval: 30000  # 30 seconds
+  retryAttempts: 3
+  retryDelay: 5000     # 5 seconds
+
+# External endpoints
+endpoints:
+  # Elasticsearch/OpenSearch
+  elasticsearch:
+    enabled: false
+    url: ${ELASTICSEARCH_URL:-}
+    index: pfm-logs
+    username: ${ELASTICSEARCH_USERNAME:-}
+    password: ${ELASTICSEARCH_PASSWORD:-}
+    
+  # Splunk
+  splunk:
+    enabled: false
+    url: ${SPLUNK_URL:-}
+    token: ${SPLUNK_TOKEN:-}
+    index: pfm_logs
+    
+  # AWS CloudWatch
+  cloudwatch:
+    enabled: false
+    region: ${AWS_REGION:-us-east-1}
+    logGroup: /pfm/application
+    accessKeyId: ${AWS_ACCESS_KEY_ID:-}
+    secretAccessKey: ${AWS_SECRET_ACCESS_KEY:-}
+    
+  # Custom webhook
+  webhook:
+    enabled: false
+    url: ${WEBHOOK_URL:-}
+    headers:
+      Authorization: Bearer ${WEBHOOK_TOKEN:-}
+      Content-Type: application/json
+
+# Log processing rules
+processing:
+  # Fields to include in shipped logs
+  includeFields:
+    - timestamp
+    - level
+    - message
+    - service
+    - environment
+    - requestId
+    - userId
+    - sessionId
+    - category
+    
+  # Fields to exclude
+  excludeFields:
+    - stack
+    - meta.password
+    - meta.secret
+    - meta.token
+    
+  # Field transformations
+  transformations:
+    # Rename fields
+    rename:
+      level: log_level
+      service: application
+      
+    # Add static fields
+    static:
+      organization: pfm-community
+      version: ${APP_VERSION:-1.0.0}
+
+# File monitoring
+monitoring:
+  paths:
+    - /var/log/pfm/*.log
+    - /var/log/pfm/audit/*.log
+    - /var/log/pfm/security/*.log
+    
+  # File patterns to exclude
+  excludePatterns:
+    - "*.tmp"
+    - "*.lock"
+    - "*~"
+    
+  # Polling interval for file changes
+  pollInterval: 1000  # 1 second
+
+# Health check configuration
+health:
+  port: 3002
+  endpoint: /health
+  
+# Metrics configuration
+metrics:
+  enabled: true
+  port: 9102
+  endpoint: /metrics 

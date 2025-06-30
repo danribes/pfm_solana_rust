@@ -604,24 +604,33 @@ const validateUserId = [
   handleValidationErrors
 ];
 
-// Wallet address validation
+// Wallet address validation (Solana format)
 const validateWalletAddress = [
   body('walletAddress')
-    .matches(/^0x[a-fA-F0-9]{40}$/)
-    .withMessage('Invalid wallet address format'),
+    .matches(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/)
+    .withMessage('Invalid Solana wallet address format'),
   
   handleValidationErrors
 ];
 
-// Wallet signature validation
+// Wallet address parameter validation (Solana format)
+const validateWalletAddressParam = [
+  param('walletAddress')
+    .matches(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/)
+    .withMessage('Invalid Solana wallet address format'),
+  
+  handleValidationErrors
+];
+
+// Wallet signature validation (Solana format)
 const validateWalletSignature = [
   body('walletAddress')
-    .matches(/^0x[a-fA-F0-9]{40}$/)
-    .withMessage('Invalid wallet address format'),
+    .matches(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/)
+    .withMessage('Invalid Solana wallet address format'),
   
   body('signature')
-    .matches(/^0x[a-fA-F0-9]{130}$/)
-    .withMessage('Invalid signature format'),
+    .isBase64()
+    .withMessage('Invalid signature format (must be base64)'),
   
   body('nonce')
     .isString()
@@ -982,6 +991,7 @@ module.exports = {
   validateUserSearch,
   validateUserId,
   validateWalletAddress,
+  validateWalletAddressParam,
   validateWalletSignature,
   validateUserData,
   validateQuestionCreation,

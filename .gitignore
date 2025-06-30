@@ -85,7 +85,7 @@ dump.rdb
 *:Zone.Identifier
 
 # Dev Container
-.devcontainer/ 
+ 
 # Next.js build output
 .next/
 .next/**
