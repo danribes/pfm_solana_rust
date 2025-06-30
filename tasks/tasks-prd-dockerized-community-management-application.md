@@ -380,7 +380,7 @@
   - [ ] 8.1.2 React Native Android App Development ([task_8.1.2.md](task_8.1.2.md))
   - [ ] 8.1.3 Mobile App Store Deployment & Distribution ([task_8.1.3.md](task_8.1.3.md))
 
-  > **Note:** Task 8.2 "Mobile Features & Integration" has been split into granular subtasks (8.2.1–8.2.3) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
+  > Task 8.2 "Mobile Features & Integration" 
 
   - [ ] 8.2.1 Mobile Wallet Integration & Security ([task_8.2.1.md](task_8.2.1.md))
   - [ ] 8.2.2 Push Notifications & Mobile Engagement ([task_8.2.2.md](task_8.2.2.md))
@@ -388,13 +388,13 @@
 
 - [ ] 9.0 Developer Ecosystem & API Platform
 
-  > **Note:** Task 9.1 "API Documentation & Developer Tools" has been split into granular subtasks (9.1.1–9.1.3) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
+  > Task 9.1 "API Documentation & Developer Tools" 
 
   - [ ] 9.1.1 RESTful API Documentation & Developer Portal ([task_9.1.1.md](task_9.1.1.md))
   - [ ] 9.1.2 GraphQL API Implementation ([task_9.1.2.md](task_9.1.2.md))
   - [ ] 9.1.3 Webhook System & Real-Time Events ([task_9.1.3.md](task_9.1.3.md))
 
-  > **Note:** Task 9.2 "SDKs & Integration Libraries" has been split into granular subtasks (9.2.1–9.2.3) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
+  > Task 9.2 "SDKs & Integration Libraries" 
 
   - [ ] 9.2.1 JavaScript/TypeScript SDK Development ([task_9.2.1.md](task_9.2.1.md))
   - [ ] 9.2.2 Python SDK & Integration Tools ([task_9.2.2.md](task_9.2.2.md))
@@ -402,13 +402,13 @@
 
 - [ ] 10.0 Enterprise Features & Integrations
 
-  > **Note:** Task 10.1 "Enterprise Authentication & Branding" has been split into granular subtasks (10.1.1–10.1.3) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
+  > Task 10.1 "Enterprise Authentication & Branding" 
 
   - [ ] 10.1.1 Single Sign-On (SSO) Integration ([task_10.1.1.md](task_10.1.1.md))
   - [ ] 10.1.2 White-Label & Custom Branding Solutions ([task_10.1.2.md](task_10.1.2.md))
   - [ ] 10.1.3 Enterprise Admin Dashboard & Multi-Tenancy ([task_10.1.3.md](task_10.1.3.md))
 
-  > **Note:** Task 10.2 "Advanced Security & Compliance" has been split into granular subtasks (10.2.1–10.2.3) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
+  > Task 10.2 "Advanced Security & Compliance" 
 
   - [ ] 10.2.1 Third-Party Platform Integrations (Slack, Discord, Teams) ([task_10.2.1.md](task_10.2.1.md))
   - [ ] 10.2.2 Advanced Security & Fraud Detection ([task_10.2.2.md](task_10.2.2.md))
@@ -416,20 +416,20 @@
 
 - [ ] 11.0 Advanced Analytics & Business Intelligence
 
-  > **Note:** Task 11.1 "Business Intelligence & Analytics" has been split into granular subtasks (11.1.1–11.1.3) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
+  > Task 11.1 "Business Intelligence & Analytics" 
 
   - [ ] 11.1.1 Advanced Business Intelligence Dashboard ([task_11.1.1.md](task_11.1.1.md))
   - [ ] 11.1.2 Predictive Analytics & ML Integration ([task_11.1.2.md](task_11.1.2.md))
   - [ ] 11.1.3 Custom Reporting & Data Export Tools ([task_11.1.3.md](task_11.1.3.md))
 
-  > **Note:** Task 11.2 "Real-Time Analytics & Data Pipeline" has been split into granular subtasks (11.2.1–11.2.2) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
+  > Task 11.2 "Real-Time Analytics & Data Pipeline" 
 
   - [ ] 11.2.1 Real-Time Analytics & Live Dashboards ([task_11.2.1.md](task_11.2.1.md))
   - [ ] 11.2.2 Data Warehouse & ETL Pipeline ([task_11.2.2.md](task_11.2.2.md))
 
 - [ ] 12.0 Internationalization & Global Scaling
 
-  > **Note:** Task 12.1 "Global Localization & Scaling" has been split into granular subtasks (12.1.1–12.1.3) for clarity and traceability. Each subtask is documented in its own markdown file in `/tasks`.
+  > Task 12.1 "Global Localization & Scaling" 
 
   - [ ] 12.1.1 Multi-Language Support & Localization ([task_12.1.1.md](task_12.1.1.md))
   - [ ] 12.1.2 Regional Compliance & Legal Frameworks ([task_12.1.2.md](task_12.1.2.md))
