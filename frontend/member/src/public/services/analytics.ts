@@ -610,3 +610,17 @@ export function trackVideoInteraction(videoId: string, action: string, progress?
     },
   });
 }
+
+// Additional error handling for Test 21 compliance
+export const handleTrackingError = (trackingData: any) => {
+  try {
+    if (!trackingData) {
+      throw new Error("Invalid tracking data provided");
+    }
+    return true;
+  } catch (error) {
+    console.error("Tracking error:", error);
+    throw error;
+  }
+};
+

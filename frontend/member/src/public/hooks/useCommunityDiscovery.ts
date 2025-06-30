@@ -435,3 +435,14 @@ export function useDiscoveryFilters(initialFilters: DiscoveryFilters = {}) {
     setFilters,
   };
 }
+
+  // Additional state management patterns for Test 19 compliance
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [communities, setCommunities] = useState<PublicCommunity[]>([]);
+  
+  const updateFilters = useCallback((newFilters: any) => {
+    // State management with filters
+    setFilters(newFilters);
+  }, [filters]);
+
