@@ -76,8 +76,13 @@ const nextConfig = {
     NEXT_PUBLIC_ENVIRONMENT: process.env.NODE_ENV || 'development'
   },
   
-  // Output configuration for Docker
-  output: 'standalone',
+  // Output configuration - switch between standalone (Docker) and export (GitHub Pages)
+  output: process.env.GITHUB_ACTIONS ? 'export' : 'standalone',
+  
+  // GitHub Pages configuration
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  assetPrefix: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  trailingSlash: true,
   
   // Webpack configuration
   webpack: (config, { isServer }) => {
