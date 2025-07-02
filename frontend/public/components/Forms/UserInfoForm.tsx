@@ -4,16 +4,16 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { UserInfoFormProps, UserRegistrationData, FormErrors } from '@/types/registration';
+import { UserInfoFormProps, UserRegistrationData, FormErrors } from '../../types/registration';
 import { 
   validateField, 
   getPasswordStrength, 
   generateUsernameSuggestions 
-} from '@/validation/registrationValidation';
+} from '../../validation/registrationValidation';
 import { 
   checkEmailAvailability, 
   checkUsernameAvailability 
-} from '@/services/registration';
+} from '../../services/registration';
 
 interface FieldState {
   value: string;

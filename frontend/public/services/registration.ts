@@ -8,7 +8,7 @@ import {
   UserProfile,
   RegistrationError,
   REGISTRATION_ERROR_CODES
-} from '@/types/registration';
+} from '../types/registration';
 
 // Base API configuration - Docker environment compatible
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -476,6 +476,8 @@ export const generateUsernameSuggestions = (
   
   return suggestions.slice(0, 8);
 };
+
+// Note: checkEmailAvailability and checkUsernameAvailability are exported above
 
 // Export main API instance
 export default registrationAPI; 

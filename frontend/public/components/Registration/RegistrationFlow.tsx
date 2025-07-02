@@ -4,17 +4,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { RegistrationFlowProps, RegistrationStep } from '@/types/registration';
-import { useRegistration, useWalletConnection, useEmailVerification } from '@/hooks/useRegistration';
+import { RegistrationFlowProps, RegistrationStep } from '../../types/registration';
+import { useRegistration, useWalletConnection, useEmailVerification } from '../../hooks/useRegistration';
 
 // Import step components
-import WalletSelector from '@/components/Wallet/WalletSelector';
-import WalletConnectionGuide from '@/components/Wallet/WalletConnectionGuide';
-import UserInfoForm from '@/components/Forms/UserInfoForm';
-import InterestSelection from '@/components/Forms/InterestSelection';
-import TermsAcceptance from '@/components/Registration/TermsAcceptance';
-import EmailVerification from '@/components/Registration/EmailVerification';
-import SuccessConfirmation from '@/components/Registration/SuccessConfirmation';
+import WalletSelector from '../Wallet/WalletSelector';
+import WalletConnectionGuide from '../Wallet/WalletConnectionGuide';
+import UserInfoForm from '../Forms/UserInfoForm';
+import InterestSelection from '../Forms/InterestSelection';
+import TermsAcceptance from './TermsAcceptance';
+import EmailVerification from './EmailVerification';
+import SuccessConfirmation from './SuccessConfirmation';
 
 // Progress indicator component
 const ProgressIndicator: React.FC<{
