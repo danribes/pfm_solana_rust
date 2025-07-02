@@ -1,6 +1,20 @@
 // Task 7.1.3: Public User Registration & Wallet Connection
 // Wallet connection service for multi-wallet support
 
+// Global type declarations for wallet providers
+declare global {
+  interface Window {
+    solana?: {
+      isPhantom?: boolean;
+      connect(): Promise<{ publicKey: { toString(): string } }>;
+      disconnect(): Promise<void>;
+      signMessage(message: Uint8Array): Promise<{ signature: Uint8Array }>;
+    };
+    solflare?: any;
+    ethereum?: any;
+  }
+}
+
 import {
   WalletProvider,
   WalletInfo,
@@ -208,14 +222,12 @@ class WalletConnectionService {
       const response = await window.solana.connect();
       const publicKey = response.publicKey.toString();
       
-      // Get balance (optional)
+      // Get balance (optional) - skip for public landing page
       let balance;
       try {
-        const connection = new (await import('@solana/web3.js')).Connection(
-          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com'
-        );
-        const balanceResponse = await connection.getBalance(response.publicKey);
-        balance = balanceResponse / 1e9; // Convert lamports to SOL
+        // Balance fetching would require @solana/web3.js package
+        // For the public landing page, we'll skip this to avoid dependency
+        balance = undefined;
       } catch (e) {
         console.warn('Failed to get balance:', e);
       }
@@ -470,8 +482,7 @@ class WalletConnectionService {
         case 'phantom':
           if (!window.solana?.isPhantom) throw new Error('Phantom not available');
           const phantomSignature = await window.solana.signMessage(
-            new TextEncoder().encode(message),
-            'utf8'
+            new TextEncoder().encode(message)
           );
           return Buffer.from(phantomSignature.signature).toString('hex');
 

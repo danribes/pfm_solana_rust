@@ -3,16 +3,17 @@
 // Enhanced Stats Section with animated counters and modern visual effects
 
 import React, { useState, useEffect } from 'react';
-import { motion, useAnimation, useInView } from 'framer-motion';
+import { motion, useAnimation } from 'framer-motion';
 import { useRef } from 'react';
+import { useInView } from 'react-intersection-observer';
 import { TrendingUp, TrendingDown, Minus, Users, Vote, Building2, Clock } from 'lucide-react';
 
 interface StatItem {
   id: string;
   label: string;
-  value: number;
-  unit: string;
-  description: string;
+  value: string | number;
+  unit?: string;
+  description?: string;
   trend?: 'up' | 'down' | 'stable';
   trendValue?: number;
 }
@@ -24,15 +25,23 @@ interface StatsSectionProps {
 }
 
 // Animated counter hook
-const useAnimatedCounter = (end: number, duration: number = 2000) => {
-  const [count, setCount] = useState(0);
+const useAnimatedCounter = (end: string | number, duration: number = 2000) => {
+  const [count, setCount] = useState<string | number>(0);
   const [hasAnimated, setHasAnimated] = useState(false);
 
   const animate = () => {
     if (hasAnimated) return;
     
+    // If the value is a string, set it directly without animation
+    if (typeof end === 'string') {
+      setCount(end as any);
+      setHasAnimated(true);
+      return;
+    }
+    
     const startTime = Date.now();
     const startValue = 0;
+    const endValue = end as number;
     
     const updateCount = () => {
       const now = Date.now();
@@ -41,7 +50,7 @@ const useAnimatedCounter = (end: number, duration: number = 2000) => {
       
       // Easing function for smooth animation
       const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-      const currentValue = Math.floor(startValue + (end - startValue) * easeOutQuart);
+      const currentValue = Math.floor(startValue + (endValue - startValue) * easeOutQuart);
       
       setCount(currentValue);
       
@@ -67,7 +76,8 @@ const StatCard: React.FC<{ stat: StatItem; index: number; inView: boolean }> = (
     }
   }, [inView, animate]);
 
-  const formatNumber = (num: number) => {
+  const formatNumber = (num: string | number) => {
+    if (typeof num === 'string') return num;
     if (stat.unit === '%') return num.toFixed(1);
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
@@ -182,9 +192,11 @@ const StatCard: React.FC<{ stat: StatItem; index: number; inView: boolean }> = (
         </h3>
 
         {/* Description */}
-        <p className="text-gray-600 group-hover:text-gray-700 transition-colors">
-          {stat.description}
-        </p>
+        {stat.description && (
+          <p className="text-gray-600 group-hover:text-gray-700 transition-colors">
+            {stat.description}
+          </p>
+        )}
       </div>
 
       {/* Shine effect */}
@@ -198,8 +210,7 @@ const StatsSection: React.FC<StatsSectionProps> = ({
   title = "Trusted by Communities Worldwide",
   subtitle = "See the impact we're making across different community types"
 }) => {
-  const ref = useRef(null);
-  const inView = useInView(ref, { threshold: 0.3, once: true });
+  const { ref, inView } = useInView({ threshold: 0.3, triggerOnce: true });
 
   return (
     <section ref={ref} className="py-20 bg-gradient-to-br from-gray-50 via-white to-gray-50 relative overflow-hidden">

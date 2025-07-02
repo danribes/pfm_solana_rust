@@ -322,7 +322,7 @@ export const validateSingleField = async (
   if (rule.custom) {
     const result = rule.custom(value);
     if (result !== true) {
-      return result;
+      return typeof result === 'string' ? result : 'Validation failed';
     }
   }
   
@@ -330,7 +330,7 @@ export const validateSingleField = async (
   if (rule.asyncValidation) {
     const result = await rule.asyncValidation(value);
     if (result !== true) {
-      return result;
+      return typeof result === 'string' ? result : 'Async validation failed';
     }
   }
   

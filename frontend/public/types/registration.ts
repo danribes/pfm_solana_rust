@@ -107,7 +107,7 @@ export interface RegistrationState {
   completedSteps: RegistrationStep[];
   userData: Partial<UserRegistrationData>;
   walletConnection?: WalletConnection;
-  errors: Record<string, string>;
+  errors: FormErrors;
   isLoading: boolean;
   canGoBack: boolean;
   canGoNext: boolean;
@@ -336,7 +336,7 @@ export interface UseRegistrationResult {
   };
   validation: {
     validateStep: (step: RegistrationStep) => boolean;
-    validateField: (field: string, value: any) => string | undefined;
+    validateField: (field: string, value: any) => Promise<string | undefined>;
     isStepComplete: (step: RegistrationStep) => boolean;
   };
 }
