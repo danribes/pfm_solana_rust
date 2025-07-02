@@ -3,8 +3,15 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'frontend/public/**'
+      - '.github/workflows/deploy-pages.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'frontend/public/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:

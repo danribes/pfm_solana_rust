@@ -26,15 +26,16 @@ on:
         required: false
         default: 'true'
         type: boolean
-  push:
-    branches: [ main ]
-    paths:
-      - 'backend/**'
-      - 'frontend/**'
-      - 'contracts/**'
-      - 'docker-compose.yml'
-      - 'docker-compose.prod.yml'
-      - '.github/workflows/cd-*.yml'
+  # Temporarily disabled for GitHub Pages deployment
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - 'backend/**'
+  #     - 'frontend/**'
+  #     - 'contracts/**'
+  #     - 'docker-compose.yml'
+  #     - 'docker-compose.prod.yml'
+  #     - '.github/workflows/cd-*.yml'
 
 env:
   REGISTRY: ghcr.io
