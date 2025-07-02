@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { AppLayout } from "../src/components/Layout";
-import { useVoting } from "../src/hooks";
-import { VotingQuestionCard } from "../src/components/Voting";
-import { VotingQuestion, VotingStatus } from "../src/types";
+import AppLayout from "../../src/components/Layout/AppLayout";
+import { useVoting } from "../../src/hooks";
+import { VotingQuestion } from "../../src/types/campaign";
 
 const VotingQuestionDetailPage: React.FC = () => {
   const router = useRouter();
   const { id } = router.query;
-  const { state, actions } = useVoting();
+  const { campaign, userStatus, selectedVotes, setVote, submitVotes, isSubmitting, canSubmit, validationErrors } = useVoting(id as string);
   const [question, setQuestion] = useState<VotingQuestion | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,14 +22,16 @@ const VotingQuestionDetailPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      // Find question in existing state or load individually
-      const existingQuestion = state.questions.find(q => q.id === questionId);
-      if (existingQuestion) {
-        setQuestion(existingQuestion);
+      // Find question in campaign data
+      if (campaign && campaign.questions) {
+        const existingQuestion = campaign.questions.find(q => q.id === questionId);
+        if (existingQuestion) {
+          setQuestion(existingQuestion);
+        } else {
+          setError("Voting question not found");
+        }
       } else {
-        // Load individual question - this would need to be implemented in the voting service
-        // For now, show error if not found in existing questions
-        setError("Voting question not found");
+        setError("Campaign data not available");
       }
     } catch (err: any) {
       setError(err.message || "Failed to load voting question");
@@ -88,10 +89,27 @@ const VotingQuestionDetailPage: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Voting Question</h1>
         </div>
 
-        <VotingQuestionCard
-          question={question}
-          onVoteSuccess={handleVoteSuccess}
-        />
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">{question.title}</h2>
+          <p className="text-gray-600 mb-4">{question.description}</p>
+          
+          <div className="space-y-3">
+            <h3 className="font-medium text-gray-900">Options:</h3>
+            {question.options.map((option, index) => (
+              <div key={option.id} className="border rounded-lg p-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">{option.text}</span>
+                  <span className="text-sm text-gray-500">
+                    {option.voteCount} votes ({option.percentage?.toFixed(1) || 0}%)
+                  </span>
+                </div>
+                {option.description && (
+                  <p className="text-sm text-gray-600 mt-1">{option.description}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </AppLayout>
   );

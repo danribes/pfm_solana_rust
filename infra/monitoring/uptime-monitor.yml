@@ -1,0 +1,225 @@
+# Task 6.6.1: Uptime Monitoring Configuration
+# Comprehensive uptime monitoring for PFM Community Application
+
+monitors:
+  # Main website monitoring
+  - name: "PFM Community Main Site"
+    url: "https://pfm-community.app"
+    method: "GET"
+    timeout: 30
+    interval: 60
+    regions:
+      - "us-east-1"
+      - "us-west-2"
+      - "eu-west-1"
+      - "ap-southeast-1"
+    
+    # Expected response criteria
+    expected_status: [200, 301, 302]
+    expected_text: "PFM Community"
+    ssl_check: true
+    follow_redirects: true
+    
+    # Alert configuration
+    alerts:
+      - type: "email"
+        threshold: 2  # Alert after 2 failed checks
+        recipients:
+          - "alerts@pfm-community.app"
+          - "admin@pfm-community.app"
+      
+      - type: "slack"
+        webhook_url: "${SLACK_WEBHOOK_URL}"
+        channel: "#alerts"
+        threshold: 1
+
+  # Member portal monitoring
+  - name: "Member Portal"
+    url: "https://app.pfm-community.app"
+    method: "GET"
+    timeout: 30
+    interval: 60
+    regions:
+      - "us-east-1"
+      - "us-west-2"
+      - "eu-west-1"
+    
+    expected_status: [200]
+    expected_text: "Member Portal"
+    ssl_check: true
+    
+    alerts:
+      - type: "email"
+        threshold: 2
+        recipients:
+          - "alerts@pfm-community.app"
+
+  # Admin dashboard monitoring
+  - name: "Admin Dashboard"
+    url: "https://admin.pfm-community.app"
+    method: "GET"
+    timeout: 30
+    interval: 120
+    regions:
+      - "us-east-1"
+      - "us-west-2"
+    
+    expected_status: [200, 401, 403]  # May redirect to login
+    ssl_check: true
+    
+    alerts:
+      - type: "email"
+        threshold: 3
+        recipients:
+          - "admin@pfm-community.app"
+
+  # API health monitoring
+  - name: "API Health Endpoint"
+    url: "https://api.pfm-community.app/health"
+    method: "GET"
+    timeout: 15
+    interval: 30
+    regions:
+      - "us-east-1"
+      - "us-west-2"
+      - "eu-west-1"
+    
+    expected_status: [200]
+    expected_text: "healthy"
+    ssl_check: true
+    
+    alerts:
+      - type: "email"
+        threshold: 1  # Alert immediately for API issues
+        recipients:
+          - "alerts@pfm-community.app"
+          - "dev@pfm-community.app"
+      
+      - type: "slack"
+        webhook_url: "${SLACK_WEBHOOK_URL}"
+        channel: "#critical-alerts"
+        threshold: 1
+
+  # Database connectivity (through API)
+  - name: "Database Connectivity"
+    url: "https://api.pfm-community.app/health/database"
+    method: "GET"
+    timeout: 20
+    interval: 60
+    regions:
+      - "us-east-1"
+      - "us-west-2"
+    
+    expected_status: [200]
+    expected_text: "connected"
+    ssl_check: true
+    
+    alerts:
+      - type: "email"
+        threshold: 1
+        recipients:
+          - "alerts@pfm-community.app"
+          - "dba@pfm-community.app"
+
+  # Redis connectivity (through API)
+  - name: "Redis Connectivity"
+    url: "https://api.pfm-community.app/health/redis"
+    method: "GET"
+    timeout: 15
+    interval: 60
+    regions:
+      - "us-east-1"
+      - "us-west-2"
+    
+    expected_status: [200]
+    expected_text: "connected"
+    ssl_check: true
+    
+    alerts:
+      - type: "email"
+        threshold: 2
+        recipients:
+          - "alerts@pfm-community.app"
+
+# Global configuration
+global:
+  # Notification settings
+  notifications:
+    email:
+      smtp_server: "smtp.forwardemail.net"
+      smtp_port: 587
+      username: "alerts@pfm-community.app"
+      password: "${EMAIL_PASSWORD}"
+      from_address: "alerts@pfm-community.app"
+      from_name: "PFM Monitoring System"
+    
+    slack:
+      default_webhook: "${SLACK_WEBHOOK_URL}"
+      default_channel: "#monitoring"
+      username: "PFM Monitor"
+      icon_emoji: ":warning:"
+  
+  # Dashboard settings
+  dashboard:
+    title: "PFM Community Status"
+    description: "Real-time status monitoring for PFM Community Management Application"
+    refresh_interval: 30
+    timezone: "UTC"
+    
+    # Public status page
+    public_page:
+      enabled: true
+      url: "https://status.pfm-community.app"
+      theme: "light"
+      logo_url: "https://pfm-community.app/logo.png"
+      
+      # Components to display
+      components:
+        - name: "Website"
+          monitors: ["PFM Community Main Site"]
+        - name: "Member Portal"
+          monitors: ["Member Portal"]
+        - name: "Admin Dashboard"
+          monitors: ["Admin Dashboard"]
+        - name: "API Services"
+          monitors: ["API Health Endpoint"]
+        - name: "Database"
+          monitors: ["Database Connectivity"]
+        - name: "Cache"
+          monitors: ["Redis Connectivity"]
+
+  # Maintenance windows
+  maintenance:
+    # Regular maintenance schedule
+    scheduled:
+      - name: "Weekly Maintenance"
+        day: "Sunday"
+        time: "02:00 UTC"
+        duration: 120  # minutes
+        description: "Regular system maintenance and updates"
+      
+      - name: "Database Backup"
+        day: "Daily"
+        time: "01:00 UTC"
+        duration: 30
+        description: "Daily database backup operation"
+
+# Performance monitoring thresholds
+performance:
+  response_time:
+    warning: 2000   # ms
+    critical: 5000  # ms
+  
+  availability:
+    warning: 99.0   # %
+    critical: 95.0  # %
+  
+  ssl_expiry:
+    warning: 30     # days
+    critical: 7     # days
+
+# Data retention
+retention:
+  monitoring_data: "90 days"
+  alert_history: "1 year"
+  performance_metrics: "30 days"

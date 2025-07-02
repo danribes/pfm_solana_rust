@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 245, 247, 250;
+  --background-end-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      rgb(var(--background-start-rgb)),
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Force body visibility to prevent FOUC */
+body, 
+body[style*="display: none"] {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Remove default Next.js loading styles */
+.next-loading {
+  display: none !important;
+}
+
+/* Custom loading spinner */
+.loading-spinner {
+  @apply animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600;
+}
+
+/* Ensure proper layout structure */
+#__next {
+  min-height: 100vh;
+}
+
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Control emoji sizes in navigation only */
+.nav-emoji {
+  font-size: 1.5rem !important;
+  line-height: 1.5rem !important;
+}
+
+/* Navigation icons */
+.nav-icon {
+  @apply w-5 h-5;
+}
+
+/* SVG icon sizing */
+svg.icon {
+  @apply w-5 h-5;
+} 

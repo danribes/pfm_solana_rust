@@ -12,13 +12,20 @@ import VisualAccessibility, {
   HighContrastToggle 
 } from "../src/components/Accessible/VisualAccessibility";
 
-const VisualAccessibilityDemo: React.FC = () => {
+const VisualAccessibilityDemo = () => {
   const { announce } = useAccessibility();
   const [activeTest, setActiveTest] = useState("overview");
   const [selectedTheme, setSelectedTheme] = useState("default");
 
   // Color contrast test data
-  const contrastTests = [
+  type ContrastTest = {
+    name: string;
+    fg: string;
+    bg: string;
+    size: "normal"  < /dev/null |  "large";
+  };
+
+  const contrastTests: ContrastTest[] = [
     { name: "Primary Blue", fg: "#2563EB", bg: "#FFFFFF", size: "normal" },
     { name: "Success Green", fg: "#059669", bg: "#FFFFFF", size: "normal" },
     { name: "Warning Orange", fg: "#D97706", bg: "#FFFFFF", size: "normal" },
@@ -251,7 +258,7 @@ const VisualAccessibilityDemo: React.FC = () => {
                             key={index}
                             foreground={test.fg}
                             background={test.bg}
-                            size={test.size as "normal" | "large"}
+                            size={test.size}
                           />
                         ))}
                       </div>

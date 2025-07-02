@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { WalletIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+// Using simple SVG icons instead of heroicons for containerized development
 import { useWallet } from '../../hooks/useWallet';
 import { formatWalletAddress } from '../../utils/wallet';
 import clsx from 'clsx';
@@ -93,7 +93,9 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
     if (connected && publicKey) {
       return (
         <>
-          <WalletIcon className="h-4 w-4 mr-2" />
+          <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          </svg>
           <span className="flex items-center">
             {walletName && (
               <span className="mr-2 font-medium">{walletName}</span>
@@ -103,7 +105,9 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
             </span>
           </span>
           {showDropdown && (
-            <ChevronDownIcon className="h-4 w-4 ml-2" />
+            <svg className="h-4 w-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           )}
         </>
       );
@@ -111,7 +115,9 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
 
     return (
       <>
-        <WalletIcon className="h-4 w-4 mr-2" />
+        <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
         Connect Wallet
       </>
     );

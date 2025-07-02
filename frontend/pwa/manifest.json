@@ -1,0 +1,208 @@
+{
+  "name": "PFM Community Management",
+  "short_name": "PFM Community",
+  "description": "Decentralized community management platform powered by Solana blockchain",
+  "version": "1.0.0",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#2563eb",
+  "background_color": "#ffffff",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  
+  "icons": [
+    {
+      "src": "/assets/images/logo-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/images/logo-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/images/logo-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/images/logo-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/images/logo-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/images/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/images/logo-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/images/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  
+  "shortcuts": [
+    {
+      "name": "Admin Portal",
+      "short_name": "Admin",
+      "description": "Access the admin portal",
+      "url": "/admin",
+      "icons": [
+        {
+          "src": "/assets/images/admin-icon-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Member Portal",
+      "short_name": "Member",
+      "description": "Access the member portal",
+      "url": "/member",
+      "icons": [
+        {
+          "src": "/assets/images/member-icon-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Active Polls",
+      "short_name": "Polls",
+      "description": "View and participate in active polls",
+      "url": "/member/polls",
+      "icons": [
+        {
+          "src": "/assets/images/poll-icon-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  
+  "categories": [
+    "business",
+    "productivity",
+    "social",
+    "utilities"
+  ],
+  
+  "screenshots": [
+    {
+      "src": "/assets/images/screenshot-desktop-1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Admin Dashboard - Desktop View"
+    },
+    {
+      "src": "/assets/images/screenshot-desktop-2.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Community Management - Desktop View"
+    },
+    {
+      "src": "/assets/images/screenshot-mobile-1.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Member Portal - Mobile View"
+    },
+    {
+      "src": "/assets/images/screenshot-mobile-2.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Voting Interface - Mobile View"
+    }
+  ],
+  
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://pfm-community.app/manifest.json"
+    }
+  ],
+  
+  "prefer_related_applications": false,
+  
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  
+  "protocol_handlers": [
+    {
+      "protocol": "web+pfm",
+      "url": "/handle?type=%s"
+    }
+  ],
+  
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "file",
+          "accept": ["image/*", "application/pdf"]
+        }
+      ]
+    }
+  },
+  
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  
+  "display_override": [
+    "window-controls-overlay",
+    "minimal-ui",
+    "standalone",
+    "browser"
+  ],
+  
+  "file_handlers": [
+    {
+      "action": "/handle-files",
+      "accept": {
+        "application/json": [".json"],
+        "text/csv": [".csv"],
+        "application/pdf": [".pdf"]
+      }
+    }
+  ],
+  
+  "handle_links": "preferred",
+  
+  "capture_links": "existing-client-navigate"
+}

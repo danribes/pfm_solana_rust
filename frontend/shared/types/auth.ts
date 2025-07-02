@@ -30,6 +30,7 @@ export interface RolePermissions {
 // ============================================================================
 
 export interface AuthUser {
+  id: string;
   publicKey: PublicKey;
   walletAddress: string;
   role: UserRole;

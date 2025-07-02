@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRouter } from 'next/router';
-import { AppLayout } from '../src/components/Layout';
-import { CommunityDetail } from '../src/components/Communities';
+import { AppLayout } from '../../src/components/Layout';
+import { CommunityDetail } from '../../src/components/Communities';
 
 const CommunityDetailPage: React.FC = () => {
   const router = useRouter();

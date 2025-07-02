@@ -1,0 +1,284 @@
+# Task 6.6.1: Performance Alerting Configuration
+# Performance monitoring and alerting rules for production environment
+
+# Performance metrics and thresholds
+metrics:
+  # Response time monitoring
+  response_time:
+    # Frontend applications
+    frontend:
+      warning_threshold: 2000   # 2 seconds
+      critical_threshold: 5000  # 5 seconds
+      measurement_window: "5m"
+      evaluation_frequency: "1m"
+      
+      rules:
+        - name: "Frontend Response Time Warning"
+          condition: "avg_response_time > 2000"
+          severity: "warning"
+          message: "Frontend response time is elevated ({{value}}ms)"
+          
+        - name: "Frontend Response Time Critical"
+          condition: "avg_response_time > 5000"
+          severity: "critical"
+          message: "Frontend response time is critically high ({{value}}ms)"
+    
+    # API services
+    api:
+      warning_threshold: 1000   # 1 second
+      critical_threshold: 3000  # 3 seconds
+      measurement_window: "5m"
+      evaluation_frequency: "30s"
+      
+      rules:
+        - name: "API Response Time Warning"
+          condition: "avg_response_time > 1000"
+          severity: "warning"
+          message: "API response time is elevated ({{value}}ms)"
+          
+        - name: "API Response Time Critical"
+          condition: "avg_response_time > 3000"
+          severity: "critical"
+          message: "API response time is critically high ({{value}}ms)"
+
+  # Error rate monitoring
+  error_rate:
+    # HTTP error rates
+    http_errors:
+      warning_threshold: 5      # 5% error rate
+      critical_threshold: 10    # 10% error rate
+      measurement_window: "10m"
+      evaluation_frequency: "1m"
+      
+      rules:
+        - name: "HTTP Error Rate Warning"
+          condition: "error_rate > 5"
+          severity: "warning"
+          message: "HTTP error rate is elevated ({{value}}%)"
+          
+        - name: "HTTP Error Rate Critical"
+          condition: "error_rate > 10"
+          severity: "critical"
+          message: "HTTP error rate is critically high ({{value}}%)"
+    
+    # Application errors
+    application_errors:
+      warning_threshold: 10     # 10 errors per minute
+      critical_threshold: 50    # 50 errors per minute
+      measurement_window: "5m"
+      evaluation_frequency: "1m"
+      
+      rules:
+        - name: "Application Error Rate Warning"
+          condition: "error_count > 10"
+          severity: "warning"
+          message: "Application error rate is elevated ({{value}} errors/min)"
+
+  # Resource utilization
+  resources:
+    # CPU usage
+    cpu:
+      warning_threshold: 80     # 80% CPU usage
+      critical_threshold: 95    # 95% CPU usage
+      measurement_window: "5m"
+      evaluation_frequency: "1m"
+      
+      rules:
+        - name: "High CPU Usage Warning"
+          condition: "avg_cpu_usage > 80"
+          severity: "warning"
+          message: "CPU usage is high ({{value}}%)"
+          
+        - name: "High CPU Usage Critical"
+          condition: "avg_cpu_usage > 95"
+          severity: "critical"
+          message: "CPU usage is critically high ({{value}}%)"
+    
+    # Memory usage
+    memory:
+      warning_threshold: 85     # 85% memory usage
+      critical_threshold: 95    # 95% memory usage
+      measurement_window: "5m"
+      evaluation_frequency: "1m"
+      
+      rules:
+        - name: "High Memory Usage Warning"
+          condition: "avg_memory_usage > 85"
+          severity: "warning"
+          message: "Memory usage is high ({{value}}%)"
+    
+    # Disk usage
+    disk:
+      warning_threshold: 80     # 80% disk usage
+      critical_threshold: 90    # 90% disk usage
+      measurement_window: "10m"
+      evaluation_frequency: "5m"
+      
+      rules:
+        - name: "High Disk Usage Warning"
+          condition: "disk_usage > 80"
+          severity: "warning"
+          message: "Disk usage is high ({{value}}%)"
+
+  # Database performance
+  database:
+    # Connection pool
+    connections:
+      warning_threshold: 80     # 80% of max connections
+      critical_threshold: 95    # 95% of max connections
+      measurement_window: "5m"
+      evaluation_frequency: "1m"
+      
+      rules:
+        - name: "Database Connection Pool Warning"
+          condition: "connection_usage > 80"
+          severity: "warning"
+          message: "Database connection pool usage is high ({{value}}%)"
+    
+    # Query performance
+    queries:
+      slow_query_threshold: 5000  # 5 seconds
+      warning_threshold: 10       # 10 slow queries per minute
+      critical_threshold: 50      # 50 slow queries per minute
+      
+      rules:
+        - name: "Slow Database Queries"
+          condition: "slow_query_count > 10"
+          severity: "warning"
+          message: "High number of slow database queries ({{value}}/min)"
+
+# Alert destinations
+alert_destinations:
+  # Email alerts
+  email:
+    # Critical alerts
+    critical:
+      recipients:
+        - "alerts@pfm-community.app"
+        - "admin@pfm-community.app"
+        - "oncall@pfm-community.app"
+      subject_prefix: "[CRITICAL] PFM Community"
+      
+    # Warning alerts
+    warning:
+      recipients:
+        - "alerts@pfm-community.app"
+        - "dev@pfm-community.app"
+      subject_prefix: "[WARNING] PFM Community"
+  
+  # Slack alerts
+  slack:
+    # Critical alerts
+    critical:
+      webhook_url: "${SLACK_CRITICAL_WEBHOOK}"
+      channel: "#critical-alerts"
+      username: "PFM Alert System"
+      icon_emoji: ":rotating_light:"
+      
+    # Warning alerts  
+    warning:
+      webhook_url: "${SLACK_WARNING_WEBHOOK}"
+      channel: "#monitoring"
+      username: "PFM Monitor"
+      icon_emoji: ":warning:"
+  
+  # PagerDuty for critical issues
+  pagerduty:
+    enabled: true
+    integration_key: "${PAGERDUTY_INTEGRATION_KEY}"
+    severity_mapping:
+      critical: "critical"
+      warning: "warning"
+
+# Alert grouping and suppression
+alert_management:
+  # Group similar alerts
+  grouping:
+    - group_by: ["service", "severity"]
+      group_wait: "30s"
+      group_interval: "5m"
+      repeat_interval: "1h"
+  
+  # Suppress duplicate alerts
+  suppression:
+    - source_matchers: ["alertname=~'.*Response Time.*'"]
+      target_matchers: ["alertname=~'.*Error Rate.*'"]
+      equal: ["service"]
+  
+  # Alert escalation
+  escalation:
+    # Escalate critical alerts after 15 minutes
+    - condition: "severity=critical AND age>15m"
+      action: "escalate"
+      escalate_to: "manager_oncall"
+    
+    # Auto-resolve alerts after 1 hour if conditions are met
+    - condition: "severity=warning AND age>1h AND current_value<threshold"
+      action: "resolve"
+
+# Maintenance windows
+maintenance_windows:
+  # Suppress alerts during maintenance
+  - name: "Weekly Maintenance"
+    schedule: "0 2 * * 0"  # Sunday 2 AM UTC
+    duration: "2h"
+    suppress_alerts: true
+    
+  - name: "Deployment Window"
+    schedule: "manual"  # Manually triggered
+    duration: "30m"
+    suppress_alerts: ["deployment_related"]
+
+# Performance baselines
+baselines:
+  # Establish performance baselines
+  response_time:
+    frontend: "1500ms"    # Target response time
+    api: "500ms"          # Target API response time
+    
+  error_rate:
+    acceptable: "1%"      # Acceptable error rate
+    target: "0.1%"        # Target error rate
+    
+  availability:
+    target: "99.9%"       # Target uptime
+    minimum: "99.5%"      # Minimum acceptable uptime
+
+# Reporting
+reports:
+  # Daily performance summary
+  daily:
+    enabled: true
+    time: "08:00 UTC"
+    recipients:
+      - "reports@pfm-community.app"
+      - "management@pfm-community.app"
+    
+    metrics:
+      - "avg_response_time"
+      - "error_rate"
+      - "availability"
+      - "resource_usage"
+  
+  # Weekly detailed report
+  weekly:
+    enabled: true
+    day: "Monday"
+    time: "09:00 UTC"
+    recipients:
+      - "reports@pfm-community.app"
+      - "dev@pfm-community.app"
+    
+    include:
+      - "performance_trends"
+      - "alert_summary"
+      - "capacity_planning"
+      - "recommendations"
+
+# Performance monitoring endpoints
+monitors:
+  - name: "API Response Time Monitor"
+    url: "https://api.pfm-community.app/health"
+    timeout: 30
+    interval: 60
+

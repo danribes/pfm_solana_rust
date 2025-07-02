@@ -18,18 +18,58 @@ import MembershipModal from './MembershipModal';
 import { formatDate, formatMemberCount, getCategoryIcon } from '../../utils/community';
 
 interface CommunityDetailProps {
-  community: CommunityDetails;
+  community?: CommunityDetails;
+  communityId?: string;
 }
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
 }
 
-const CommunityDetail: React.FC<CommunityDetailProps> = ({ community }) => {
+const CommunityDetail: React.FC<CommunityDetailProps> = ({ community: providedCommunity, communityId }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showMembershipModal, setShowMembershipModal] = useState(false);
+  const [loadedCommunity, setLoadedCommunity] = useState<CommunityDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
   const { connected } = useWalletContext();
-  const { membershipStatus, joinCommunity, leaveCommunity, loading, actionLoading } = useMembership(community.id);
+  
+  // Use provided community or loaded community
+  const community = providedCommunity || loadedCommunity;
+  
+  // Load community data if only ID is provided
+  React.useEffect(() => {
+    if (communityId && !providedCommunity) {
+      setIsLoading(true);
+      // Mock loading community data
+      setTimeout(() => {
+        const mockCommunity: CommunityDetails = {
+          id: communityId,
+          name: 'Sample Community',
+          description: 'A sample community for demonstration',
+          category: 'General',
+          memberCount: 150,
+          isPrivate: false,
+          tags: ['web3', 'community'],
+          joinRequirements: [],
+          admin: { id: 'admin1', name: 'Admin User', avatar: '' },
+          createdAt: new Date().toISOString(),
+          avatar: '',
+          banner: '',
+          socialLinks: {},
+          rules: [],
+          announcements: [],
+          polls: [],
+          events: [],
+          resources: []
+        };
+        setLoadedCommunity(mockCommunity);
+        setIsLoading(false);
+      }, 1000);
+    }
+  }, [communityId, providedCommunity]);
+  
+  const { membershipStatus, joinCommunity, leaveCommunity, loading, actionLoading } = useMembership(community?.id || '');
 
   const tabs = [
     {
@@ -142,6 +182,32 @@ const CommunityDetail: React.FC<CommunityDetailProps> = ({ community }) => {
       </div>
     );
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white shadow-sm rounded-lg p-8">
+          <div className="animate-pulse">
+            <div className="h-48 bg-gray-200 rounded-lg mb-4"></div>
+            <div className="h-6 bg-gray-200 rounded w-1/3 mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if no community data
+  if (!community) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white shadow-sm rounded-lg p-8 text-center">
+          <div className="text-gray-500">Community not found.</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -1,0 +1,261 @@
+# Task 6.6.4: CDN Integration & Performance Optimization
+# CDN Security Rules and Protection Policies
+
+security_rules:
+  # Rate limiting rules
+  rate_limiting:
+    # API endpoints protection
+    api_protection:
+      patterns:
+        - "/api/*"
+      rules:
+        - name: "api_rate_limit"
+          threshold: 100
+          period: 60  # seconds
+          action: "challenge"
+          bypass_conditions:
+            - ip_whitelist: ["${ADMIN_IP_RANGE}"]
+            - header: "X-API-Key"
+              value: "${TRUSTED_API_KEY}"
+              
+    # Authentication endpoints
+    auth_protection:
+      patterns:
+        - "/api/auth/*"
+        - "/login"
+        - "/register"
+      rules:
+        - name: "auth_rate_limit"
+          threshold: 10
+          period: 60
+          action: "block"
+          duration: 300  # 5 minutes
+          
+    # Admin panel protection
+    admin_protection:
+      patterns:
+        - "/admin/*"
+      rules:
+        - name: "admin_rate_limit"
+          threshold: 50
+          period: 60
+          action: "challenge"
+          ip_whitelist: ["${ADMIN_IP_RANGE}"]
+
+  # Bot management
+  bot_management:
+    enabled: true
+    
+    # Bot detection rules
+    detection:
+      user_agent_analysis: true
+      behavioral_analysis: true
+      machine_learning: true
+      challenge_solving: true
+      
+    # Bot categories and actions
+    categories:
+      good_bots:
+        action: "allow"
+        examples:
+          - "googlebot"
+          - "bingbot"
+          - "slackbot"
+          - "twitterbot"
+          
+      verified_bots:
+        action: "allow"
+        verification: "dns_reverse"
+        
+      automated_tools:
+        action: "challenge"
+        examples:
+          - "curl"
+          - "wget"
+          - "postman"
+          
+      malicious_bots:
+        action: "block"
+        duration: 86400  # 24 hours
+        
+    # Custom bot rules
+    custom_rules:
+      - name: "api_bot_protection"
+        patterns: ["/api/*"]
+        action: "js_challenge"
+        exceptions:
+          - user_agents: ["PFM-Mobile-App/*"]
+          - headers: {"X-API-Version": "v1"}
+
+  # DDoS protection
+  ddos_protection:
+    enabled: true
+    
+    # Attack detection
+    detection:
+      sensitivity: "high"
+      automatic_mitigation: true
+      
+    # Mitigation strategies
+    mitigation:
+      - name: "volumetric_attacks"
+        threshold: 10000  # requests/minute
+        action: "rate_limit"
+        
+      - name: "application_layer"
+        threshold: 1000   # requests/minute per IP
+        action: "challenge"
+        
+      - name: "protocol_attacks"
+        action: "drop"
+        
+    # Allowlist for trusted sources
+    allowlist:
+      ips: ["${TRUSTED_IP_RANGES}"]
+      asns: ["${TRUSTED_ASNS}"]
+
+  # Content security policies
+  content_security:
+    # Hotlinking protection
+    hotlink_protection:
+      enabled: true
+      allowed_domains:
+        - "pfm-community.app"
+        - "*.pfm-community.app"
+        - "localhost"
+      action: "deny"
+      
+    # File upload security
+    upload_security:
+      patterns: ["/upload/*", "/api/upload/*"]
+      max_file_size: 10485760  # 10MB
+      allowed_types:
+        - "image/jpeg"
+        - "image/png"
+        - "image/gif"
+        - "image/webp"
+        - "application/pdf"
+      scan_malware: true
+      
+    # SQL injection protection
+    sql_injection:
+      enabled: true
+      patterns:
+        - "UNION"
+        - "SELECT.*FROM"
+        - "DROP TABLE"
+        - "INSERT INTO"
+      action: "block"
+      
+    # XSS protection
+    xss_protection:
+      enabled: true
+      patterns:
+        - "<script"
+        - "javascript:"
+        - "onload="
+        - "onerror="
+      action: "sanitize"
+
+  # Geographic restrictions
+  geo_restrictions:
+    # Allow specific countries
+    allowed_countries:
+      - "US"  # United States
+      - "CA"  # Canada
+      - "GB"  # United Kingdom
+      - "AU"  # Australia
+      - "DE"  # Germany
+      - "FR"  # France
+      - "JP"  # Japan
+      
+    # Block specific countries (if needed)
+    blocked_countries: []
+    
+    # Actions for restricted access
+    restriction_action: "challenge"
+    
+    # Exceptions for specific paths
+    exceptions:
+      - path: "/api/public/*"
+        action: "allow"
+
+  # SSL/TLS security
+  ssl_security:
+    # Minimum TLS version
+    min_tls_version: "1.2"
+    
+    # HSTS settings
+    hsts:
+      enabled: true
+      max_age: 31536000  # 1 year
+      include_subdomains: true
+      preload: true
+      
+    # Certificate transparency
+    certificate_transparency: true
+    
+    # OCSP stapling
+    ocsp_stapling: true
+
+  # Custom security headers
+  security_headers:
+    # Content Security Policy
+    content_security_policy:
+      default_src: "'self'"
+      script_src: "'self' 'unsafe-inline' https://apis.google.com"
+      style_src: "'self' 'unsafe-inline' https://fonts.googleapis.com"
+      img_src: "'self' data: https: blob:"
+      font_src: "'self' https://fonts.gstatic.com"
+      connect_src: "'self' https://api.pfm-community.app wss://api.pfm-community.app"
+      frame_ancestors: "'none'"
+      
+    # Additional security headers
+    headers:
+      X_Frame_Options: "DENY"
+      X_Content_Type_Options: "nosniff"
+      X_XSS_Protection: "1; mode=block"
+      Referrer_Policy: "strict-origin-when-cross-origin"
+      Permissions_Policy: "geolocation=(), microphone=(), camera=()"
+
+  # Monitoring and alerting
+  monitoring:
+    # Security events to track
+    events:
+      - "rate_limit_triggered"
+      - "bot_blocked"
+      - "ddos_detected"
+      - "security_rule_triggered"
+      - "geographic_block"
+      
+    # Alert thresholds
+    alerts:
+      high_threat_level:
+        threshold: 100  # events per hour
+        notification: "immediate"
+        
+      moderate_threat_level:
+        threshold: 50   # events per hour
+        notification: "hourly_digest"
+        
+    # Integration endpoints
+    webhooks:
+      security_alerts: "${SECURITY_WEBHOOK_URL}"
+      ddos_notifications: "${DDOS_WEBHOOK_URL}"
+
+# Environment-specific overrides
+environments:
+  production:
+    security_level: "high"
+    bot_fight_mode: true
+    challenge_ttl: 1800
+    
+  staging:
+    security_level: "medium"
+    bot_fight_mode: false
+    challenge_ttl: 900
+    
+  development:
+    security_level: "low"
+    rate_limiting: false
+    geographic_restrictions: false

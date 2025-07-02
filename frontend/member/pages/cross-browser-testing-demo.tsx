@@ -469,13 +469,13 @@ const CrossBrowserTestingDemo: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {Object.entries(groupedResults).map(([category, tests]) => (
+                  {Object.entries(groupedResults).map(([category, tests]: [string, any[]]) => (
                     <div key={category} className="bg-white rounded-lg shadow p-6">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4 capitalize">
                         {category} Tests ({tests.length})
                       </h3>
                       <div className="space-y-3">
-                        {tests.map((test, index) => (
+                        {tests.map((test: any, index: number) => (
                           <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                             <span className="font-medium text-gray-900">{test.name}</span>
                             <div className="flex items-center space-x-2">

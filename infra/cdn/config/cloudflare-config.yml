@@ -1,0 +1,134 @@
+# Task 6.6.4: CDN Integration & Performance Optimization
+# Cloudflare CDN Configuration for PFM Community Management Application
+
+cloudflare:
+  zones:
+    production:
+      zone_id: "${CLOUDFLARE_ZONE_ID}"
+      domain: "pfm-community.app"
+      subdomains:
+        - "api.pfm-community.app"
+        - "admin.pfm-community.app"
+        - "member.pfm-community.app"
+        - "assets.pfm-community.app"
+        - "cdn.pfm-community.app"
+    
+    staging:
+      zone_id: "${CLOUDFLARE_STAGING_ZONE_ID}"
+      domain: "staging.pfm-community.app"
+      subdomains:
+        - "api-staging.pfm-community.app"
+        - "admin-staging.pfm-community.app"
+        - "member-staging.pfm-community.app"
+
+  # CDN Settings
+  settings:
+    # Performance optimization
+    minify:
+      html: true
+      css: true
+      js: true
+    
+    # Compression
+    brotli: true
+    gzip: true
+    
+    # HTTP/2 and HTTP/3
+    http2: true
+    http3: true
+    
+    # Image optimization
+    polish: "lossless"
+    webp: true
+    mirage: true
+    
+    # Security
+    security_level: "high"
+    challenge_ttl: 1800
+    browser_check: true
+    
+    # SSL/TLS
+    ssl: "strict"
+    tls_1_3: true
+    
+    # Development mode (staging only)
+    development_mode: false
+    
+    # Always online
+    always_online: true
+    
+    # IPv6 compatibility
+    ipv6: true
+
+  # Origin servers
+  origins:
+    production:
+      primary: "origin.pfm-community.app"
+      fallback: "backup.pfm-community.app"
+      health_check: "/health"
+      
+    staging:
+      primary: "origin-staging.pfm-community.app"
+      health_check: "/health"
+
+  # Load balancing
+  load_balancer:
+    enabled: true
+    session_affinity: "cookie"
+    fallback_pool: "backup-pool"
+    steering_policy: "dynamic_latency"
+    
+  # Analytics and monitoring
+  analytics:
+    enabled: true
+    sample_rate: 100
+    
+  # Worker routes (for edge computing)
+  workers:
+    - pattern: "pfm-community.app/api/*"
+      script: "api-optimizer"
+    - pattern: "*.pfm-community.app/assets/*"
+      script: "asset-optimizer"
+    - pattern: "pfm-community.app/sw.js"
+      script: "service-worker-optimizer"
+
+  # Page rules for caching
+  page_rules:
+    - url: "*.pfm-community.app/assets/*"
+      settings:
+        cache_level: "cache_everything"
+        edge_cache_ttl: 2592000  # 30 days
+        browser_cache_ttl: 604800  # 7 days
+        
+    - url: "api.pfm-community.app/*"
+      settings:
+        cache_level: "bypass"
+        disable_performance: false
+        
+    - url: "*.pfm-community.app/*.html"
+      settings:
+        cache_level: "cache_everything"
+        edge_cache_ttl: 3600  # 1 hour
+        browser_cache_ttl: 1800  # 30 minutes
+
+  # Rate limiting
+  rate_limiting:
+    api_endpoints:
+      threshold: 1000
+      period: 60
+      action: "challenge"
+      
+    general:
+      threshold: 10000
+      period: 60
+      action: "block"
+
+# Environment variables mapping
+environment:
+  production:
+    CLOUDFLARE_API_TOKEN: "${CLOUDFLARE_PROD_API_TOKEN}"
+    CLOUDFLARE_ZONE_ID: "${CLOUDFLARE_PROD_ZONE_ID}"
+    
+  staging:
+    CLOUDFLARE_API_TOKEN: "${CLOUDFLARE_STAGING_API_TOKEN}"
+    CLOUDFLARE_ZONE_ID: "${CLOUDFLARE_STAGING_ZONE_ID}"

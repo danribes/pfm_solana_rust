@@ -32,12 +32,8 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-      # Temporarily use default Redis config
-      # - ./backend/config/redis.conf:/usr/local/etc/redis/redis.conf:ro
     networks:
       - pfm-network
-    # Use default Redis configuration for now
-    # command: redis-server /usr/local/etc/redis/redis.conf
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -202,12 +198,12 @@ services:
     networks:
       - pfm-network
     command: npm run dev:container
-    # healthcheck:
-    #   test: ["CMD", "sh", "-c", "curl -f http://localhost:3001/ || exit 1"]
-    #   interval: 45s
-    #   timeout: 15s
-    #   retries: 5
-    #   start_period: 120s
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -f http://localhost:3001/api/health || exit 1"]
+      interval: 45s
+      timeout: 15s
+      retries: 5
+      start_period: 120s
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -251,7 +247,7 @@ services:
       - NEXT_PUBLIC_NETWORK=localnet
       
       # Authentication configuration
-      - NEXT_PUBLIC_AUTH_RATE_LIMIT_MAX=3
+      - NEXT_PUBLIC_AUTH_RATE_LIMIT_MAX=5
       - NEXT_PUBLIC_AUTH_RATE_LIMIT_WINDOW=15
       - NEXT_PUBLIC_SESSION_MAX_AGE=86400000
       - NEXT_PUBLIC_SESSION_RENEWAL_THRESHOLD=3600000
@@ -265,35 +261,84 @@ services:
     networks:
       - pfm-network
     command: npm run dev:container
-    # healthcheck:
-    #   test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 3
-    #   start_period: 60s
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -f http://localhost:3002/api/health || exit 1"]
+      interval: 45s
+      timeout: 15s
+      retries: 5
+      start_period: 120s
     dns:
       - 8.8.8.8
       - 8.8.4.4
 
-volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  solana_ledger:
-    driver: local
-  node_modules_shared:
-    driver: local
-  node_modules_admin:
-    driver: local
-  node_modules_member:
-    driver: local
-  node_modules_backend:
-    driver: local
+  # Public Landing Page container for Task 7.1.1
+  public-landing:
+    build:
+      context: ./frontend/public
+      dockerfile: Dockerfile
+    container_name: pfm-public-landing-page
+    ports:
+      - "3003:3003"
+    volumes:
+      - ./frontend/public:/app
+      - ./frontend/shared:/shared
+      - /app/node_modules
+    environment:
+      # Core configuration
+      - NODE_ENV=development
+      - CONTAINER_ENV=development
+      - DOCKER_CONTAINER=true
+      - CONTAINER_NAME=pfm-public-landing-page
+      - NEXT_PUBLIC_CONTAINER_MODE=true
+      - PORT=3003
+      
+      # Service URLs
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - NEXT_PUBLIC_APP_URL=http://localhost:3003
+      - NEXT_PUBLIC_APP_DOMAIN=localhost:3003
+      
+      # Backend service discovery
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
+      - NEXT_PUBLIC_AUTH_SERVICE_URL=http://localhost:3000/api/auth
+      - NEXT_PUBLIC_SESSION_SERVICE_URL=http://localhost:3000/api/session
+      - BACKEND_SERVICE_URL=http://backend:3000
+      
+      # Solana blockchain configuration
+      - NEXT_PUBLIC_SOLANA_RPC=http://localhost:8899
+      - NEXT_PUBLIC_SOLANA_WS=ws://localhost:8900
+      - NEXT_PUBLIC_NETWORK=localnet
+      
+      # Analytics configuration
+      - NEXT_PUBLIC_GA_ID=
+      - NEXT_PUBLIC_FB_PIXEL_ID=
+      - NEXT_PUBLIC_LINKEDIN_INSIGHT_TAG=
+      - NEXT_PUBLIC_ENVIRONMENT=development
+      
+      # Health check configuration
+      - HEALTH_CHECK_TIMEOUT=5000
+      - HEALTH_CHECK_RETRIES=3
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - pfm-network
+    command: npm run dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
 networks:
   pfm-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres_data:
+  redis_data:
+  solana_ledger:
+

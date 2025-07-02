@@ -7,10 +7,19 @@ import { RegistrationData } from '../../types/profile';
 interface RegistrationCompleteProps {
   registrationData: RegistrationData;
   updateRegistrationData: (data: Partial<RegistrationData>) => void;
+  connectWallet?: (walletType: any) => Promise<any>;
+  loading?: boolean;
+  onNext?: () => Promise<void>;
+  onPrevious?: () => void;
 }
 
 const RegistrationComplete: React.FC<RegistrationCompleteProps> = ({
-  registrationData
+  registrationData,
+  updateRegistrationData,
+  connectWallet,
+  loading,
+  onNext,
+  onPrevious
 }) => {
   const getSelectedCommunitiesCount = () => registrationData.selectedCommunities.length;
   

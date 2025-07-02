@@ -121,7 +121,7 @@ const SimpleRealTimeDemo: React.FC = () => {
                 return `${x},${y}`;
               }).join(' ')}
               fill="none"
-              stroke={data.datasets[0].borderColor || '#3B82F6'}
+              stroke={Array.isArray(data.datasets[0].borderColor) ? data.datasets[0].borderColor[0] : data.datasets[0].borderColor || '#3B82F6'}
               strokeWidth="2"
               className="transition-all duration-1000"
             />
@@ -136,7 +136,7 @@ const SimpleRealTimeDemo: React.FC = () => {
                   cx={x}
                   cy={y}
                   r="3"
-                  fill={data.datasets[0].borderColor || '#3B82F6'}
+                  fill={Array.isArray(data.datasets[0].borderColor) ? data.datasets[0].borderColor[0] : data.datasets[0].borderColor || '#3B82F6'}
                   className="transition-all duration-1000"
                 />
               );

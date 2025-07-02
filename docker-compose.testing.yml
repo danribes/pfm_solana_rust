@@ -1,0 +1,252 @@
+version: '3.8'
+
+services:
+  # Test Database
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: pfm-postgres-test
+    environment:
+      POSTGRES_DB: pfm_test
+      POSTGRES_USER: pfm_test_user
+      POSTGRES_PASSWORD: pfm_test_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pfm_test_user -d pfm_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pfm-test-network
+
+  # Test Redis Cache
+  redis-test:
+    image: redis:7-alpine
+    container_name: pfm-redis-test
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_test_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - pfm-test-network
+
+  # Test Backend API
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pfm-backend-test
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://pfm_test_user:pfm_test_password@postgres-test:5432/pfm_test
+      REDIS_URL: redis://redis-test:6379
+      JWT_SECRET: test-jwt-secret-key
+      API_PORT: 3000
+      CORS_ORIGIN: http://localhost:3002,http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run test:start
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - pfm-test-network
+
+  # Test Member Portal
+  member-portal-test:
+    build:
+      context: ./frontend/member
+      dockerfile: Dockerfile
+    container_name: pfm-member-portal-test
+    environment:
+      NODE_ENV: test
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      NEXT_PUBLIC_WALLET_NETWORK: devnet
+      PORT: 3002
+    ports:
+      - "3002:3002"
+    depends_on:
+      backend-test:
+        condition: service_healthy
+    volumes:
+      - ./frontend/member:/app
+      - /app/node_modules
+      - /app/.next
+    command: sh -c "npm run build && npm run start"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - pfm-test-network
+
+  # Test Admin Portal
+  admin-portal-test:
+    build:
+      context: ./frontend/admin
+      dockerfile: Dockerfile
+    container_name: pfm-admin-portal-test
+    environment:
+      NODE_ENV: test
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      NEXT_PUBLIC_WALLET_NETWORK: devnet
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      backend-test:
+        condition: service_healthy
+    volumes:
+      - ./frontend/admin:/app
+      - /app/node_modules
+      - /app/.next
+    command: sh -c "npm run build && npm run start"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - pfm-test-network
+
+  # Test Runner Container
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.testing
+    container_name: pfm-test-runner
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://pfm_test_user:pfm_test_password@postgres-test:5432/pfm_test
+      REDIS_URL: redis://redis-test:6379
+      MEMBER_PORTAL_URL: http://member-portal-test:3002
+      ADMIN_PORTAL_URL: http://admin-portal-test:3001
+      API_URL: http://backend-test:3000
+    depends_on:
+      backend-test:
+        condition: service_healthy
+      member-portal-test:
+        condition: service_healthy
+      admin-portal-test:
+        condition: service_healthy
+    volumes:
+      - .:/workspace
+      - /workspace/node_modules
+      - ./testing/reports:/workspace/testing/reports
+    working_dir: /workspace
+    command: tail -f /dev/null  # Keep container running
+    networks:
+      - pfm-test-network
+
+  # Selenium Grid Hub (for cross-browser testing)
+  selenium-hub:
+    image: selenium/hub:4.15.0
+    container_name: pfm-selenium-hub
+    ports:
+      - "4444:4444"
+    environment:
+      GRID_MAX_SESSION: 5
+      GRID_BROWSER_TIMEOUT: 300
+      GRID_TIMEOUT: 300
+    networks:
+      - pfm-test-network
+
+  # Chrome Browser Node
+  selenium-chrome:
+    image: selenium/node-chrome:4.15.0
+    container_name: pfm-selenium-chrome
+    environment:
+      HUB_HOST: selenium-hub
+      HUB_PORT: 4444
+      NODE_MAX_INSTANCES: 2
+      NODE_MAX_SESSION: 2
+    depends_on:
+      - selenium-hub
+    volumes:
+      - /dev/shm:/dev/shm
+    networks:
+      - pfm-test-network
+
+  # Firefox Browser Node
+  selenium-firefox:
+    image: selenium/node-firefox:4.15.0
+    container_name: pfm-selenium-firefox
+    environment:
+      HUB_HOST: selenium-hub
+      HUB_PORT: 4444
+      NODE_MAX_INSTANCES: 2
+      NODE_MAX_SESSION: 2
+    depends_on:
+      - selenium-hub
+    volumes:
+      - /dev/shm:/dev/shm
+    networks:
+      - pfm-test-network
+
+  # Performance Testing with k6
+  k6-performance:
+    image: grafana/k6:latest
+    container_name: pfm-k6-performance
+    volumes:
+      - ./testing/performance:/scripts
+      - ./testing/reports:/reports
+    working_dir: /scripts
+    command: run --out json=/reports/performance-results.json load-test.js
+    depends_on:
+      backend-test:
+        condition: service_healthy
+      member-portal-test:
+        condition: service_healthy
+    networks:
+      - pfm-test-network
+
+  # Test Data Management
+  test-data-manager:
+    build:
+      context: ./testing/data
+      dockerfile: Dockerfile
+    container_name: pfm-test-data-manager
+    environment:
+      DATABASE_URL: postgresql://pfm_test_user:pfm_test_password@postgres-test:5432/pfm_test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    volumes:
+      - ./testing/data:/app
+      - ./backend/database:/database
+    command: npm run seed:test
+    networks:
+      - pfm-test-network
+
+volumes:
+  postgres_test_data:
+    driver: local
+  redis_test_data:
+    driver: local
+
+networks:
+  pfm-test-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

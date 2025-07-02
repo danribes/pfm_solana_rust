@@ -1,0 +1,415 @@
+# Load Testing Configuration for PFM Community Management Application
+# Using k6 for performance testing
+
+# Global Configuration
+config:
+  target_url: "http://localhost:3002"  # Member Portal
+  admin_url: "http://localhost:3001"   # Admin Portal
+  api_url: "http://localhost:3000"     # Backend API
+  
+  # Test Duration Settings
+  test_duration: "10m"
+  ramp_up_duration: "2m"
+  ramp_down_duration: "1m"
+  
+  # Load Levels
+  baseline_users: 10
+  target_users: 100
+  stress_users: 200
+  spike_users: 500
+  
+  # Performance Thresholds
+  thresholds:
+    response_time_p95: 3000  # 95th percentile < 3s
+    response_time_p99: 5000  # 99th percentile < 5s
+    error_rate: 0.05         # Error rate < 5%
+    availability: 0.99       # 99% uptime
+
+# Test Scenarios
+scenarios:
+  
+  # Baseline Load Test
+  baseline_load:
+    description: "Normal traffic simulation"
+    executor: "constant-vus"
+    vus: 10
+    duration: "5m"
+    thresholds:
+      http_req_duration: ["p(95)<2000"]
+      http_req_failed: ["rate<0.01"]
+    
+  # Target Load Test  
+  target_load:
+    description: "Expected peak traffic"
+    executor: "ramping-vus"
+    stages:
+      - duration: "2m"
+        target: 25
+      - duration: "5m"
+        target: 100
+      - duration: "2m"
+        target: 100
+      - duration: "1m"
+        target: 0
+    thresholds:
+      http_req_duration: ["p(95)<3000"]
+      http_req_failed: ["rate<0.05"]
+  
+  # Stress Test
+  stress_test:
+    description: "Beyond normal capacity"
+    executor: "ramping-vus"
+    stages:
+      - duration: "2m"
+        target: 50
+      - duration: "3m"
+        target: 200
+      - duration: "3m"
+        target: 200
+      - duration: "2m"
+        target: 0
+    thresholds:
+      http_req_duration: ["p(95)<5000"]
+      http_req_failed: ["rate<0.10"]
+  
+  # Spike Test
+  spike_test:
+    description: "Sudden traffic surge"
+    executor: "ramping-vus"
+    stages:
+      - duration: "1m"
+        target: 10
+      - duration: "30s"
+        target: 500
+      - duration: "1m"
+        target: 500
+      - duration: "30s"
+        target: 10
+      - duration: "1m"
+        target: 0
+    thresholds:
+      http_req_duration: ["p(95)<10000"]
+      http_req_failed: ["rate<0.20"]
+
+# User Journey Tests
+user_journeys:
+  
+  # New User Registration Journey
+  registration_journey:
+    weight: 30
+    steps:
+      - name: "Load Landing Page"
+        url: "/"
+        method: "GET"
+        expected_status: 200
+        think_time: "2s"
+        
+      - name: "Load Registration Page"
+        url: "/register"
+        method: "GET"
+        expected_status: 200
+        think_time: "3s"
+        
+      - name: "Submit Registration"
+        url: "/api/auth/register"
+        method: "POST"
+        body: |
+          {
+            "email": "test{{.VU}}@example.com",
+            "username": "testuser{{.VU}}",
+            "password": "TestPass123!"
+          }
+        expected_status: 201
+        think_time: "1s"
+        
+      - name: "Load Member Dashboard"
+        url: "/dashboard"
+        method: "GET"
+        expected_status: 200
+        think_time: "2s"
+  
+  # Community Discovery Journey
+  community_discovery:
+    weight: 40
+    steps:
+      - name: "Login"
+        url: "/api/auth/login"
+        method: "POST"
+        body: |
+          {
+            "email": "member{{.VU}}@example.com",
+            "password": "TestPass123!"
+          }
+        expected_status: 200
+        
+      - name: "Browse Communities"
+        url: "/communities"
+        method: "GET"
+        expected_status: 200
+        think_time: "3s"
+        
+      - name: "Search Communities"
+        url: "/api/communities/search?q=web3"
+        method: "GET"
+        expected_status: 200
+        think_time: "2s"
+        
+      - name: "View Community Details"
+        url: "/communities/{{randomItem .communityIds}}"
+        method: "GET"
+        expected_status: 200
+        think_time: "4s"
+        
+      - name: "Submit Join Request"
+        url: "/api/communities/{{randomItem .communityIds}}/join"
+        method: "POST"
+        body: |
+          {
+            "motivation": "I'm interested in Web3 development",
+            "experience": "intermediate"
+          }
+        expected_status: 201
+        think_time: "1s"
+  
+  # Voting Participation Journey
+  voting_journey:
+    weight: 25
+    steps:
+      - name: "Login"
+        url: "/api/auth/login"
+        method: "POST"
+        body: |
+          {
+            "email": "voter{{.VU}}@example.com",
+            "password": "TestPass123!"
+          }
+        expected_status: 200
+        
+      - name: "Browse Active Polls"
+        url: "/voting"
+        method: "GET"
+        expected_status: 200
+        think_time: "3s"
+        
+      - name: "View Poll Details"
+        url: "/voting/{{randomItem .pollIds}}"
+        method: "GET"
+        expected_status: 200
+        think_time: "10s"
+        
+      - name: "Cast Vote"
+        url: "/api/voting/{{randomItem .pollIds}}/vote"
+        method: "POST"
+        body: |
+          {
+            "option": "{{randomItem .voteOptions}}",
+            "walletSignature": "mock_signature_{{.VU}}"
+          }
+        expected_status: 201
+        think_time: "2s"
+        
+      - name: "View Vote Confirmation"
+        url: "/voting/{{randomItem .pollIds}}/receipt"
+        method: "GET"
+        expected_status: 200
+        think_time: "2s"
+  
+  # Admin Management Journey
+  admin_journey:
+    weight: 5
+    steps:
+      - name: "Admin Login"
+        url: "/api/auth/admin/login"
+        method: "POST"
+        body: |
+          {
+            "email": "admin{{.VU}}@example.com",
+            "password": "AdminPass123!"
+          }
+        expected_status: 200
+        
+      - name: "Load Admin Dashboard"
+        url: "/admin/dashboard"
+        method: "GET"
+        expected_status: 200
+        think_time: "2s"
+        
+      - name: "View Join Requests"
+        url: "/admin/join-requests"
+        method: "GET"
+        expected_status: 200
+        think_time: "3s"
+        
+      - name: "Process Join Request"
+        url: "/api/admin/join-requests/{{randomItem .requestIds}}/approve"
+        method: "POST"
+        body: |
+          {
+            "decision": "approved",
+            "comments": "Welcome to the community!"
+          }
+        expected_status: 200
+        think_time: "5s"
+
+# API Endpoint Tests
+api_endpoints:
+  
+  # Authentication Endpoints
+  auth_endpoints:
+    - endpoint: "/api/auth/login"
+      method: "POST"
+      expected_response_time: 500
+      expected_status: 200
+      
+    - endpoint: "/api/auth/logout"
+      method: "POST"
+      expected_response_time: 200
+      expected_status: 200
+      
+    - endpoint: "/api/auth/refresh"
+      method: "POST"
+      expected_response_time: 300
+      expected_status: 200
+  
+  # Community Endpoints
+  community_endpoints:
+    - endpoint: "/api/communities"
+      method: "GET"
+      expected_response_time: 800
+      expected_status: 200
+      
+    - endpoint: "/api/communities/search"
+      method: "GET"
+      expected_response_time: 1000
+      expected_status: 200
+      
+    - endpoint: "/api/communities/{id}"
+      method: "GET"
+      expected_response_time: 600
+      expected_status: 200
+  
+  # Voting Endpoints
+  voting_endpoints:
+    - endpoint: "/api/voting/polls"
+      method: "GET"
+      expected_response_time: 700
+      expected_status: 200
+      
+    - endpoint: "/api/voting/polls/{id}"
+      method: "GET"
+      expected_response_time: 500
+      expected_status: 200
+      
+    - endpoint: "/api/voting/polls/{id}/vote"
+      method: "POST"
+      expected_response_time: 1000
+      expected_status: 201
+
+# Database Performance Tests
+database_tests:
+  
+  # Read Operations
+  read_operations:
+    - query: "SELECT * FROM communities WHERE status = 'active'"
+      expected_time: 100
+      
+    - query: "SELECT * FROM join_requests WHERE status = 'pending'"
+      expected_time: 150
+      
+    - query: "SELECT * FROM voting_questions WHERE end_date > NOW()"
+      expected_time: 200
+  
+  # Write Operations
+  write_operations:
+    - operation: "INSERT INTO join_requests"
+      expected_time: 200
+      
+    - operation: "UPDATE join_requests SET status = 'approved'"
+      expected_time: 150
+      
+    - operation: "INSERT INTO votes"
+      expected_time: 300
+
+# Resource Monitoring
+monitoring:
+  
+  # System Metrics
+  system_metrics:
+    - cpu_usage: 80  # Max 80% CPU
+    - memory_usage: 85  # Max 85% RAM
+    - disk_io: 1000  # Max 1000 IOPS
+    - network_io: 100  # Max 100 Mbps
+  
+  # Application Metrics
+  app_metrics:
+    - response_time_avg: 1500  # Average < 1.5s
+    - error_rate: 0.05  # < 5% errors
+    - throughput: 1000  # Min 1000 req/min
+    - concurrent_users: 500  # Support 500 concurrent users
+  
+  # Database Metrics
+  db_metrics:
+    - connection_pool: 90  # Max 90% pool usage
+    - query_time_avg: 500  # Average query < 500ms
+    - deadlocks: 0  # Zero deadlocks
+    - cache_hit_ratio: 95  # Min 95% cache hits
+
+# Test Data Setup
+test_data:
+  
+  # User Accounts
+  users:
+    - type: "regular_users"
+      count: 100
+      prefix: "member"
+      
+    - type: "admin_users"
+      count: 5
+      prefix: "admin"
+      
+    - type: "beta_users"
+      count: 50
+      prefix: "beta"
+  
+  # Communities
+  communities:
+    count: 20
+    categories: ["DeFi", "NFT", "Gaming", "DAO", "Development"]
+    
+  # Voting Polls
+  polls:
+    count: 10
+    types: ["community_proposal", "member_vote", "governance"]
+    
+  # Join Requests
+  join_requests:
+    count: 200
+    statuses: ["pending", "approved", "rejected"]
+
+# Cleanup and Reporting
+cleanup:
+  delete_test_data: true
+  preserve_logs: true
+  archive_results: true
+  
+reporting:
+  formats: ["html", "json", "csv"]
+  include_charts: true
+  email_results: false
+  webhook_url: null
+
+# Environment-Specific Overrides
+environments:
+  
+  development:
+    target_users: 25
+    test_duration: "5m"
+    
+  staging:
+    target_users: 100
+    test_duration: "15m"
+    
+  production:
+    target_users: 500
+    test_duration: "30m"
+    stress_users: 1000

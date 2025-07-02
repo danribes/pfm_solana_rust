@@ -7,11 +7,19 @@ import { RegistrationData } from '../../types/profile';
 interface TermsAcceptanceProps {
   registrationData: RegistrationData;
   updateRegistrationData: (data: Partial<RegistrationData>) => void;
+  connectWallet?: (walletType: any) => Promise<any>;
+  loading?: boolean;
+  onNext?: () => Promise<void>;
+  onPrevious?: () => void;
 }
 
 const TermsAcceptance: React.FC<TermsAcceptanceProps> = ({
   registrationData,
-  updateRegistrationData
+  updateRegistrationData,
+  connectWallet,
+  loading,
+  onNext,
+  onPrevious
 }) => {
   const handleTermsChange = (accepted: boolean) => {
     updateRegistrationData({ acceptedTerms: accepted });

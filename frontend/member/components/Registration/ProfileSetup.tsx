@@ -7,11 +7,19 @@ import { RegistrationData } from '../../types/profile';
 interface ProfileSetupProps {
   registrationData: RegistrationData;
   updateRegistrationData: (data: Partial<RegistrationData>) => void;
+  connectWallet?: (walletType: any) => Promise<any>;
+  loading?: boolean;
+  onNext?: () => Promise<void>;
+  onPrevious?: () => void;
 }
 
 const ProfileSetup: React.FC<ProfileSetupProps> = ({
   registrationData,
-  updateRegistrationData
+  updateRegistrationData,
+  connectWallet,
+  loading,
+  onNext,
+  onPrevious
 }) => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});

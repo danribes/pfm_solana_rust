@@ -28,7 +28,7 @@ export const VisualAccessibility: React.FC<VisualAccessibilityProps> = ({
 
   // Detect user preferences
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window \!== "undefined") {
       const prefersHighContrast = window.matchMedia("(prefers-contrast: high)").matches;
       const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const prefersDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -47,7 +47,7 @@ export const VisualAccessibility: React.FC<VisualAccessibilityProps> = ({
     const styleId = "visual-accessibility-styles";
     let existingStyle = document.getElementById(styleId);
     
-    if (!existingStyle) {
+    if (\!existingStyle) {
       existingStyle = document.createElement("style");
       existingStyle.id = styleId;
       document.head.appendChild(existingStyle);
@@ -56,27 +56,27 @@ export const VisualAccessibility: React.FC<VisualAccessibilityProps> = ({
     const styles = `
       ${preferences.highContrast ? `
         .visual-accessibility-container {
-          filter: contrast(1.5) !important;
+          filter: contrast(1.5) \!important;
         }
         .visual-accessibility-container * {
-          border-color: currentColor !important;
+          border-color: currentColor \!important;
         }
       ` : ""}
       
       ${preferences.largeText ? `
         .visual-accessibility-container {
-          font-size: 1.25em !important;
-          line-height: 1.6 !important;
+          font-size: 1.25em \!important;
+          line-height: 1.6 \!important;
         }
-        .visual-accessibility-container h1 { font-size: 2.5em !important; }
-        .visual-accessibility-container h2 { font-size: 2em !important; }
-        .visual-accessibility-container h3 { font-size: 1.75em !important; }
+        .visual-accessibility-container h1 { font-size: 2.5em \!important; }
+        .visual-accessibility-container h2 { font-size: 2em \!important; }
+        .visual-accessibility-container h3 { font-size: 1.75em \!important; }
         .visual-accessibility-container button,
         .visual-accessibility-container input,
         .visual-accessibility-container select {
-          font-size: 1.125em !important;
-          padding: 12px 16px !important;
-          min-height: 56px !important;
+          font-size: 1.125em \!important;
+          padding: 12px 16px \!important;
+          min-height: 56px \!important;
         }
       ` : ""}
       
@@ -84,17 +84,17 @@ export const VisualAccessibility: React.FC<VisualAccessibilityProps> = ({
         .visual-accessibility-container *,
         .visual-accessibility-container *::before,
         .visual-accessibility-container *::after {
-          animation-duration: 0.01ms !important;
-          animation-iteration-count: 1 !important;
-          transition-duration: 0.01ms !important;
-          scroll-behavior: auto !important;
+          animation-duration: 0.01ms \!important;
+          animation-iteration-count: 1 \!important;
+          transition-duration: 0.01ms \!important;
+          scroll-behavior: auto \!important;
         }
       ` : ""}
       
       .visual-accessibility-container *:focus {
-        outline: 3px solid #005FCC !important;
-        outline-offset: 2px !important;
-        box-shadow: 0 0 0 5px rgba(0, 95, 204, 0.3) !important;
+        outline: 3px solid #005FCC \!important;
+        outline-offset: 2px \!important;
+        box-shadow: 0 0 0 5px rgba(0, 95, 204, 0.3) \!important;
       }
     `;
 
@@ -102,7 +102,7 @@ export const VisualAccessibility: React.FC<VisualAccessibilityProps> = ({
   }, [preferences]);
 
   const togglePreference = (pref: keyof typeof preferences) => {
-    setPreferences(prev => ({ ...prev, [pref]: !prev[pref] }));
+    setPreferences(prev => ({ ...prev, [pref]: \!prev[pref] }));
   };
 
   return (
@@ -151,7 +151,7 @@ export const VisualAccessibility: React.FC<VisualAccessibilityProps> = ({
 interface ColorContrastCheckerProps {
   foreground: string;
   background: string;
-  size?: "normal" | "large";
+  size?: "normal"  < /dev/null |  "large";
   className?: string;
 }
 
@@ -212,6 +212,7 @@ export const FocusIndicator: React.FC<FocusIndicatorProps> = ({
     default: {
       outline: `${width}px solid ${color}`,
       outlineOffset: `${offset}px`,
+      boxShadow: "none",
     },
     "high-contrast": {
       outline: "3px solid currentColor",
@@ -238,9 +239,9 @@ export const FocusIndicator: React.FC<FocusIndicatorProps> = ({
       
       <style jsx>{`
         .focus-indicator-container *:focus {
-          outline: var(--focus-outline) !important;
-          outline-offset: var(--focus-outline-offset) !important;
-          box-shadow: var(--focus-box-shadow) !important;
+          outline: var(--focus-outline) \!important;
+          outline-offset: var(--focus-outline-offset) \!important;
+          box-shadow: var(--focus-box-shadow) \!important;
         }
       `}</style>
     </div>
@@ -329,14 +330,14 @@ export const HighContrastToggle: React.FC<{ onToggle?: (enabled: boolean) => voi
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window \!== "undefined") {
       const prefersHighContrast = window.matchMedia("(prefers-contrast: high)").matches;
       setEnabled(prefersHighContrast);
     }
   }, []);
 
   const toggle = () => {
-    const newState = !enabled;
+    const newState = \!enabled;
     setEnabled(newState);
     if (onToggle) onToggle(newState);
     

@@ -7,11 +7,19 @@ import { RegistrationData, CommunityOption } from '../../types/profile';
 interface CommunitySelectionProps {
   registrationData: RegistrationData;
   updateRegistrationData: (data: Partial<RegistrationData>) => void;
+  connectWallet?: (walletType: any) => Promise<any>;
+  loading?: boolean;
+  onNext?: () => Promise<void>;
+  onPrevious?: () => void;
 }
 
 const CommunitySelection: React.FC<CommunitySelectionProps> = ({
   registrationData,
-  updateRegistrationData
+  updateRegistrationData,
+  connectWallet,
+  loading: externalLoading,
+  onNext,
+  onPrevious
 }) => {
   const [communities, setCommunities] = useState<CommunityOption[]>([]);
   const [loading, setLoading] = useState(true);

@@ -118,7 +118,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
               <span>Browse</span>
             </a>
             <a 
-              href="/voting"
+              href="/voting-dashboard"
               className="flex flex-col items-center justify-center py-2 text-xs text-gray-600 hover:text-blue-600"
             >
               <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +127,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
               <span>Vote</span>
             </a>
             <a 
-              href="/profile"
+              href="/profile/voting"
               className="flex flex-col items-center justify-center py-2 text-xs text-gray-600 hover:text-blue-600"
             >
               <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

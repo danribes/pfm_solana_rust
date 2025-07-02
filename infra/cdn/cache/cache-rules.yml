@@ -1,0 +1,237 @@
+# Task 6.6.4: CDN Integration & Performance Optimization
+# Advanced Caching Rules and Policies
+
+cache_rules:
+  # Static Assets - Long-term caching
+  static_assets:
+    patterns:
+      - "*.js"
+      - "*.css"
+      - "*.png"
+      - "*.jpg"
+      - "*.jpeg"
+      - "*.gif"
+      - "*.webp"
+      - "*.avif"
+      - "*.svg"
+      - "*.ico"
+      - "*.woff"
+      - "*.woff2"
+      - "*.ttf"
+      - "*.eot"
+    settings:
+      edge_cache_ttl: 31536000  # 1 year
+      browser_cache_ttl: 31536000  # 1 year
+      cache_control: "public, max-age=31536000, immutable"
+      compress: true
+      vary: "Accept-Encoding"
+      
+  # Versioned Assets - Aggressive caching
+  versioned_assets:
+    patterns:
+      - "/assets/*"
+      - "/static/*"
+      - "/_next/static/*"
+      - "/build/*"
+    settings:
+      edge_cache_ttl: 31536000  # 1 year
+      browser_cache_ttl: 31536000  # 1 year
+      cache_control: "public, max-age=31536000, immutable"
+      compress: true
+      
+  # HTML Pages - Short-term caching with validation
+  html_pages:
+    patterns:
+      - "*.html"
+      - "/"
+      - "/admin"
+      - "/member"
+      - "/dashboard"
+    settings:
+      edge_cache_ttl: 3600  # 1 hour
+      browser_cache_ttl: 0  # No browser cache
+      cache_control: "public, max-age=0, s-maxage=3600, must-revalidate"
+      compress: true
+      vary: "Accept-Encoding, Accept"
+      
+  # API Responses - Conditional caching
+  api_responses:
+    patterns:
+      - "/api/communities/public"
+      - "/api/stats/*"
+      - "/api/public/*"
+    settings:
+      edge_cache_ttl: 300  # 5 minutes
+      browser_cache_ttl: 0
+      cache_control: "public, max-age=0, s-maxage=300"
+      vary: "Accept-Encoding, Authorization"
+      cache_key_fields:
+        - "uri"
+        - "args"
+        
+  # Dynamic API - No caching
+  dynamic_api:
+    patterns:
+      - "/api/auth/*"
+      - "/api/user/*"
+      - "/api/voting/*"
+      - "/api/admin/*"
+    settings:
+      edge_cache_ttl: 0
+      browser_cache_ttl: 0
+      cache_control: "private, no-cache, no-store, must-revalidate"
+      
+  # Service Worker - Special handling
+  service_worker:
+    patterns:
+      - "/sw.js"
+      - "/service-worker.js"
+      - "/workbox-*.js"
+    settings:
+      edge_cache_ttl: 0
+      browser_cache_ttl: 0
+      cache_control: "public, max-age=0, must-revalidate"
+      
+  # Manifest and PWA files
+  pwa_files:
+    patterns:
+      - "/manifest.json"
+      - "/site.webmanifest"
+      - "*.webmanifest"
+    settings:
+      edge_cache_ttl: 86400  # 1 day
+      browser_cache_ttl: 86400  # 1 day
+      cache_control: "public, max-age=86400"
+
+# Cache bypass conditions
+bypass_conditions:
+  # Always bypass cache for these patterns
+  always_bypass:
+    - "/api/auth/*"
+    - "/admin/api/*"
+    - "*.php"
+    - "/upload/*"
+    - "/webhook/*"
+    
+  # Bypass cache based on headers
+  header_bypass:
+    - header: "Authorization"
+      condition: "exists"
+    - header: "Cookie"
+      condition: "contains"
+      value: "session"
+    - header: "Cache-Control"
+      condition: "contains"
+      value: "no-cache"
+
+# Cache warming strategies
+cache_warming:
+  enabled: true
+  strategies:
+    # Popular pages
+    popular_pages:
+      - "/"
+      - "/admin"
+      - "/member"
+      - "/about"
+      
+    # Critical assets
+    critical_assets:
+      - "/assets/css/main.css"
+      - "/assets/js/app.js"
+      - "/assets/js/vendor.js"
+      
+    # API endpoints
+    public_apis:
+      - "/api/communities/public"
+      - "/api/stats/summary"
+      
+  # Warming schedule
+  schedule:
+    frequency: "hourly"
+    concurrent_requests: 10
+    delay_between_requests: 100  # milliseconds
+
+# Cache invalidation rules
+invalidation:
+  # Automatic invalidation triggers
+  triggers:
+    - event: "deployment"
+      patterns:
+        - "*.html"
+        - "/sw.js"
+        - "/manifest.json"
+        
+    - event: "content_update"
+      patterns:
+        - "/api/communities/public"
+        - "/api/stats/*"
+        
+  # Manual invalidation patterns
+  manual_patterns:
+    all_static: "/assets/*"
+    all_html: "*.html"
+    specific_api: "/api/communities/public"
+    
+  # Purge strategies
+  strategies:
+    smart_purge:
+      enabled: true
+      analyze_dependencies: true
+      
+    tag_based:
+      enabled: true
+      tags:
+        - "static-assets"
+        - "html-pages"
+        - "api-responses"
+
+# Performance optimization
+optimization:
+  # Compression settings
+  compression:
+    algorithms: ["brotli", "gzip"]
+    levels:
+      brotli: 6
+      gzip: 6
+    min_size: 1024  # bytes
+    
+  # Image optimization
+  image_optimization:
+    enabled: true
+    formats: ["webp", "avif"]
+    quality: 85
+    progressive: true
+    
+  # Minification
+  minification:
+    html: true
+    css: true
+    javascript: true
+    preserve_comments: false
+
+# Monitoring and analytics
+monitoring:
+  # Cache hit rate targets
+  targets:
+    overall_hit_rate: 0.95  # 95%
+    static_assets_hit_rate: 0.99  # 99%
+    html_hit_rate: 0.90  # 90%
+    
+  # Performance metrics
+  metrics:
+    - "cache_hit_rate"
+    - "cache_miss_rate"
+    - "origin_requests"
+    - "bandwidth_saved"
+    - "response_time"
+    
+  # Alerting thresholds
+  alerts:
+    low_hit_rate:
+      threshold: 0.85
+      duration: 300  # seconds
+      
+    high_origin_load:
+      threshold: 1000  # requests/minute
+      duration: 180  # seconds

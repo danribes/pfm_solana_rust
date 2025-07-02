@@ -313,7 +313,7 @@ const EnhancedBreakpointsDemo: React.FC = () => {
                   <div>
                     <h4 className="font-medium text-gray-900 mb-3">Responsive Spacing</h4>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                      {Object.entries(enhancedState.spacing).map(([size, value]) => (
+                      {Object.entries(enhancedState.spacing).map(([size, value]: [string, string]) => (
                         <div key={size} className="border rounded p-2 text-center">
                           <div className="font-medium">{size}</div>
                           <div className="text-gray-600">{value}</div>
@@ -325,7 +325,7 @@ const EnhancedBreakpointsDemo: React.FC = () => {
                   <div>
                     <h4 className="font-medium text-gray-900 mb-3">Responsive Typography</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      {Object.entries(enhancedState.typography).map(([size, value]) => (
+                      {Object.entries(enhancedState.typography).map(([size, value]: [string, string]) => (
                         <div key={size} className="border rounded p-2 text-center">
                           <div className="font-medium">{size}</div>
                           <div className="text-gray-600">{value}</div>

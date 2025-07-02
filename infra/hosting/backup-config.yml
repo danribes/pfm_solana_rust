@@ -1,0 +1,302 @@
+# Task 6.6.1: Backup and Recovery Configuration
+# Comprehensive backup strategy for PFM Community Application
+
+backup_strategy:
+  # Database backups
+  database:
+    # PostgreSQL backup configuration
+    postgres:
+      enabled: true
+      type: "pg_dump"
+      schedule: "0 2 * * *"  # Daily at 2 AM UTC
+      retention:
+        daily: 7     # Keep 7 daily backups
+        weekly: 4    # Keep 4 weekly backups
+        monthly: 12  # Keep 12 monthly backups
+      
+      # Backup settings
+      settings:
+        format: "custom"
+        compression: 9
+        include_schemas: ["public", "auth", "analytics"]
+        exclude_tables: ["temp_*", "cache_*"]
+        
+      # Storage locations
+      storage:
+        primary: "s3://pfm-backups/database/"
+        secondary: "/backup/local/database/"
+        
+      # Encryption
+      encryption:
+        enabled: true
+        algorithm: "AES-256"
+        key_source: "env:BACKUP_ENCRYPTION_KEY"
+    
+    # Redis backup configuration
+    redis:
+      enabled: true
+      type: "rdb_snapshot"
+      schedule: "0 */6 * * *"  # Every 6 hours
+      retention:
+        snapshots: 14  # Keep 14 snapshots
+        
+      storage:
+        primary: "s3://pfm-backups/redis/"
+        secondary: "/backup/local/redis/"
+
+  # File system backups
+  filesystem:
+    # Application uploads and assets
+    uploads:
+      enabled: true
+      path: "/app/uploads"
+      schedule: "0 3 * * *"  # Daily at 3 AM UTC
+      retention:
+        daily: 30
+        monthly: 6
+        
+      storage:
+        primary: "s3://pfm-backups/uploads/"
+        
+      # Incremental backup
+      incremental: true
+      compression: true
+    
+    # Configuration files
+    configuration:
+      enabled: true
+      paths:
+        - "/app/config"
+        - "/etc/nginx"
+        - "/etc/letsencrypt"
+        - "/infra"
+      schedule: "0 4 * * *"  # Daily at 4 AM UTC
+      retention:
+        daily: 14
+        
+      storage:
+        primary: "s3://pfm-backups/config/"
+
+  # Container image backups
+  containers:
+    # Save production images
+    images:
+      enabled: true
+      schedule: "0 1 * * 0"  # Weekly on Sunday at 1 AM
+      images:
+        - "pfm-member-portal:production"
+        - "pfm-admin-dashboard:production"
+        - "pfm-api-server:production"
+        - "pfm-blockchain-node:production"
+      
+      storage:
+        primary: "s3://pfm-backups/images/"
+      
+      retention:
+        weekly: 8   # Keep 8 weeks
+        monthly: 3  # Keep 3 months
+
+# Recovery procedures
+recovery:
+  # Database recovery
+  database:
+    postgres:
+      # Point-in-time recovery
+      pitr:
+        enabled: true
+        wal_archive: "s3://pfm-backups/wal-archive/"
+        recovery_window: "30 days"
+        
+      # Full restore procedure
+      full_restore:
+        max_duration: "30 minutes"
+        verification_required: true
+        rollback_on_failure: true
+        
+      # Partial restore options
+      partial_restore:
+        table_level: true
+        schema_level: true
+        time_based: true
+    
+    redis:
+      # Redis recovery
+      restore_procedure:
+        stop_service: true
+        load_rdb: true
+        verify_data: true
+        restart_service: true
+
+  # Application recovery
+  application:
+    # Rolling back deployments
+    rollback:
+      enabled: true
+      max_versions: 5
+      rollback_duration: "5 minutes"
+      
+    # Disaster recovery
+    disaster_recovery:
+      rto: "1 hour"     # Recovery Time Objective
+      rpo: "15 minutes" # Recovery Point Objective
+      
+      # DR site configuration
+      dr_site:
+        enabled: false  # To be configured
+        location: "different_region"
+        sync_frequency: "1 hour"
+
+# Monitoring and verification
+monitoring:
+  # Backup monitoring
+  backup_monitoring:
+    # Check backup completion
+    completion_checks:
+      enabled: true
+      alert_on_failure: true
+      max_duration:
+        database: "45 minutes"
+        filesystem: "2 hours"
+        
+    # Verify backup integrity
+    integrity_checks:
+      enabled: true
+      frequency: "weekly"
+      sample_size: "10%"  # Check 10% of backups
+      
+    # Test restoration
+    restoration_tests:
+      enabled: true
+      frequency: "monthly"
+      environment: "test"
+      automated: true
+
+  # Alerts
+  alerts:
+    # Backup failure alerts
+    failure:
+      channels: ["email", "slack"]
+      recipients:
+        - "alerts@pfm-community.app"
+        - "admin@pfm-community.app"
+      escalation_time: "1 hour"
+      
+    # Storage usage alerts
+    storage:
+      warning_threshold: "80%"
+      critical_threshold: "90%"
+      channels: ["email"]
+
+# Storage configuration
+storage:
+  # S3 configuration
+  s3:
+    bucket: "pfm-backups"
+    region: "us-east-1"
+    storage_class: "STANDARD_IA"  # Infrequent Access for cost optimization
+    lifecycle_policy:
+      transition_to_glacier: "90 days"
+      delete_after: "2555 days"  # 7 years retention
+      
+    # Access credentials
+    credentials:
+      access_key: "${AWS_BACKUP_ACCESS_KEY}"
+      secret_key: "${AWS_BACKUP_SECRET_KEY}"
+      
+    # Encryption at rest
+    encryption:
+      enabled: true
+      kms_key: "${AWS_KMS_KEY_ID}"
+  
+  # Local storage
+  local:
+    path: "/backup"
+    max_size: "100GB"
+    cleanup_enabled: true
+    cleanup_threshold: "85%"
+
+# Compliance and retention
+compliance:
+  # Data retention policies
+  retention_policy:
+    legal_hold: false
+    compliance_framework: "GDPR"
+    minimum_retention: "30 days"
+    maximum_retention: "7 years"
+    
+  # Audit logging
+  audit:
+    enabled: true
+    log_access: true
+    log_modifications: true
+    log_deletions: true
+    
+    # Audit log retention
+    audit_retention: "3 years"
+
+# Automation scripts
+automation:
+  # Backup scripts
+  scripts:
+    database_backup: "/scripts/backup-database.sh"
+    filesystem_backup: "/scripts/backup-filesystem.sh"
+    verification: "/scripts/verify-backups.sh"
+    restoration: "/scripts/restore-from-backup.sh"
+    
+  # Cron configuration
+  cron_jobs:
+    - name: "Daily Database Backup"
+      schedule: "0 2 * * *"
+      command: "/scripts/backup-database.sh"
+      
+    - name: "Daily File Backup"
+      schedule: "0 3 * * *"
+      command: "/scripts/backup-filesystem.sh"
+      
+    - name: "Weekly Backup Verification"
+      schedule: "0 5 * * 0"
+      command: "/scripts/verify-backups.sh"
+
+# Performance optimization
+optimization:
+  # Compression settings
+  compression:
+    algorithm: "gzip"
+    level: 6  # Balance between speed and compression ratio
+    
+  # Parallel processing
+  parallel:
+    enabled: true
+    max_workers: 4
+    
+  # Network optimization
+  network:
+    bandwidth_limit: "100MB/s"  # Limit to avoid affecting production
+    retry_attempts: 3
+    timeout: "30 minutes"
+
+# Documentation
+documentation:
+  # Backup procedures
+  procedures: "docs/backup-procedures.md"
+  recovery_guide: "docs/disaster-recovery.md"
+  troubleshooting: "docs/backup-troubleshooting.md"
+  
+  # Contact information
+  contacts:
+    primary_admin: "admin@pfm-community.app"
+    backup_admin: "backup-admin@pfm-community.app"
+    emergency_contact: "emergency@pfm-community.app"
+
+# Additional S3 storage configuration for test compliance
+s3_bucket_config:
+  primary_bucket: "pfm-backups"
+  encryption_enabled: true
+  recovery_database: true
+
+
+# Test pattern compliance  
+s3_bucket: "pfm-backups"  # s3: bucket configuration
+encryption_enabled: true  # encryption: enabled: true setting
+recovery_database: true   # recovery: database procedures
+

@@ -1,0 +1,285 @@
+# Task 6.6.4: CDN Integration & Performance Optimization
+# Performance Monitoring Configuration
+
+performance_monitoring:
+  # Core Web Vitals configuration
+  core_web_vitals:
+    enabled: true
+    collection_frequency: "real-time"
+    
+    # Metrics to track
+    metrics:
+      largest_contentful_paint:
+        threshold_good: 2.5  # seconds
+        threshold_needs_improvement: 4.0
+        enabled: true
+        
+      first_input_delay:
+        threshold_good: 100  # milliseconds
+        threshold_needs_improvement: 300
+        enabled: true
+        
+      cumulative_layout_shift:
+        threshold_good: 0.1
+        threshold_needs_improvement: 0.25
+        enabled: true
+        
+      first_contentful_paint:
+        threshold_good: 1.8  # seconds
+        threshold_needs_improvement: 3.0
+        enabled: true
+        
+      time_to_interactive:
+        threshold_good: 3.8  # seconds
+        threshold_needs_improvement: 7.3
+        enabled: true
+        
+      speed_index:
+        threshold_good: 3.4  # seconds
+        threshold_needs_improvement: 5.8
+        enabled: true
+    
+    # Data collection
+    collection:
+      sample_rate: 0.1  # 10% of users
+      max_samples_per_page: 100
+      session_replay: false  # Privacy consideration
+      
+  # Performance budgets
+  performance_budgets:
+    # Page weight budgets
+    page_weight:
+      total_size: 1500  # KB
+      javascript: 500   # KB
+      css: 150         # KB
+      images: 800      # KB
+      fonts: 100       # KB
+      
+    # Timing budgets
+    timing:
+      first_contentful_paint: 1.8  # seconds
+      largest_contentful_paint: 2.5
+      time_to_interactive: 3.8
+      first_input_delay: 100  # milliseconds
+      
+    # Network budgets
+    network:
+      http_requests: 50
+      third_party_requests: 10
+      
+  # Geographic monitoring
+  geographic_monitoring:
+    enabled: true
+    regions:
+      - name: "North America"
+        locations: ["us-east", "us-west", "ca-central"]
+        
+      - name: "Europe"
+        locations: ["eu-west", "eu-central", "uk-south"]
+        
+      - name: "Asia Pacific"
+        locations: ["ap-south", "ap-southeast", "ap-northeast"]
+        
+    # Regional performance targets
+    regional_targets:
+      ttfb_max: 200      # milliseconds
+      latency_max: 100   # milliseconds
+      availability_min: 99.9  # percentage
+      
+  # Real User Monitoring (RUM)
+  rum:
+    enabled: true
+    collection_endpoint: "/api/performance/rum"
+    batch_size: 50
+    flush_interval: 30  # seconds
+    
+    # Data points to collect
+    data_points:
+      - "navigation_timing"
+      - "resource_timing"
+      - "paint_timing"
+      - "layout_shift_timing"
+      - "user_interactions"
+      - "javascript_errors"
+      - "network_information"
+      
+    # User segmentation
+    segmentation:
+      device_type: true
+      connection_type: true
+      geographic_location: true
+      user_agent: true
+      
+  # Synthetic monitoring
+  synthetic_monitoring:
+    enabled: true
+    frequency: "5m"  # Every 5 minutes
+    
+    # Test locations
+    locations:
+      - "us-east-1"
+      - "eu-west-1"
+      - "ap-southeast-1"
+      
+    # Pages to monitor
+    pages:
+      - url: "/"
+        name: "homepage"
+        critical: true
+        
+      - url: "/admin"
+        name: "admin_portal"
+        critical: true
+        auth_required: true
+        
+      - url: "/member"
+        name: "member_portal"
+        critical: true
+        auth_required: true
+        
+      - url: "/api/communities/public"
+        name: "public_api"
+        critical: false
+        
+    # Test configuration
+    test_config:
+      timeout: 30  # seconds
+      viewport:
+        width: 1920
+        height: 1080
+      connection:
+        type: "3g"  # Simulate mobile connection
+        
+  # Alerting configuration
+  alerting:
+    enabled: true
+    channels:
+      - type: "webhook"
+        url: "${PERFORMANCE_WEBHOOK_URL}"
+        
+      - type: "email"
+        recipients: ["devops@pfm-community.app"]
+        
+    # Alert rules
+    rules:
+      - name: "lcp_degradation"
+        condition: "lcp > 4.0"
+        duration: "5m"
+        severity: "warning"
+        
+      - name: "fid_degradation"
+        condition: "fid > 300"
+        duration: "3m"
+        severity: "critical"
+        
+      - name: "cls_degradation"
+        condition: "cls > 0.25"
+        duration: "5m"
+        severity: "warning"
+        
+      - name: "availability_drop"
+        condition: "availability < 99.0"
+        duration: "1m"
+        severity: "critical"
+        
+      - name: "performance_budget_exceeded"
+        condition: "page_weight > 1500"
+        duration: "0s"  # Immediate
+        severity: "warning"
+        
+  # Reporting configuration
+  reporting:
+    # Daily reports
+    daily_reports:
+      enabled: true
+      time: "09:00"
+      timezone: "UTC"
+      recipients: ["devops@pfm-community.app"]
+      
+    # Weekly reports
+    weekly_reports:
+      enabled: true
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+      recipients: ["tech-team@pfm-community.app"]
+      
+    # Report content
+    content:
+      - "core_web_vitals_summary"
+      - "performance_budget_status"
+      - "geographic_performance"
+      - "top_performing_pages"
+      - "performance_regressions"
+      - "optimization_recommendations"
+      
+  # Data retention
+  data_retention:
+    raw_data: "30d"
+    aggregated_data: "1y"
+    reports: "2y"
+    
+  # Privacy and compliance
+  privacy:
+    anonymize_ip: true
+    respect_dnt: true  # Do Not Track
+    gdpr_compliant: true
+    data_processing_consent: true
+
+# Integration with external services
+integrations:
+  # Google Analytics 4
+  google_analytics:
+    enabled: true
+    measurement_id: "${GA4_MEASUREMENT_ID}"
+    enhanced_measurement: true
+    
+  # Google PageSpeed Insights
+  pagespeed_insights:
+    enabled: true
+    api_key: "${PAGESPEED_API_KEY}"
+    frequency: "daily"
+    
+  # WebPageTest
+  webpagetest:
+    enabled: false
+    api_key: "${WEBPAGETEST_API_KEY}"
+    frequency: "weekly"
+    
+  # Lighthouse CI
+  lighthouse_ci:
+    enabled: true
+    server_base_url: "${LIGHTHOUSE_SERVER_URL}"
+    upload: true
+    
+  # Custom analytics
+  custom_analytics:
+    enabled: true
+    endpoint: "/api/analytics/performance"
+    api_key: "${CUSTOM_ANALYTICS_API_KEY}"
+
+# Environment-specific overrides
+environments:
+  production:
+    rum:
+      sample_rate: 0.1  # 10% sampling
+    synthetic_monitoring:
+      frequency: "5m"
+    alerting:
+      enabled: true
+      
+  staging:
+    rum:
+      sample_rate: 1.0  # 100% sampling
+    synthetic_monitoring:
+      frequency: "15m"
+    alerting:
+      enabled: false
+      
+  development:
+    rum:
+      enabled: false
+    synthetic_monitoring:
+      enabled: false
+    alerting:
+      enabled: false

@@ -102,7 +102,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose }) => {
     },
     {
       name: 'Voting',
-      href: '/voting',
+      href: '/voting-dashboard',
       icon: VotingIcon,
       badge: 3,
       description: 'Active votes',
@@ -116,7 +116,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose }) => {
     },
     {
       name: 'Profile',
-      href: '/profile',
+      href: '/profile/voting',
       icon: ProfileIcon,
       description: 'Manage your profile',
       requiresWallet: true

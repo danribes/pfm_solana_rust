@@ -221,6 +221,52 @@ export class ResultsService {
       throw error;
     }
   }
+
+  /**
+   * Generate mock community analytics data
+   */
+  generateMockCommunityAnalytics() {
+    return {
+      totalPolls: 45,
+      activePolls: 12,
+      completedPolls: 33,
+      participationRate: 78,
+      averageParticipation: 145,
+      topCategories: [
+        { name: 'Governance', count: 15, percentage: 33 },
+        { name: 'Development', count: 12, percentage: 27 },
+        { name: 'Community', count: 10, percentage: 22 },
+        { name: 'Treasury', count: 8, percentage: 18 }
+      ],
+      recentActivity: [
+        { date: '2024-01-15', polls: 3, votes: 89 },
+        { date: '2024-01-14', polls: 2, votes: 67 },
+        { date: '2024-01-13', polls: 1, votes: 45 }
+      ]
+    };
+  }
+
+  /**
+   * Generate mock personal analytics data
+   */
+  generateMockPersonalAnalytics() {
+    return {
+      totalVotes: 28,
+      pollsParticipated: 25,
+      participationRate: 89,
+      votingStreak: 7,
+      favoriteCategories: [
+        { name: 'Governance', count: 12 },
+        { name: 'Development', count: 8 },
+        { name: 'Community', count: 5 }
+      ],
+      recentVotes: [
+        { pollTitle: 'Community Treasury Allocation', date: '2024-01-15', vote: 'Option A' },
+        { pollTitle: 'Developer Incentive Program', date: '2024-01-14', vote: 'Approve' },
+        { pollTitle: 'New Feature Proposal', date: '2024-01-13', vote: 'Option B' }
+      ]
+    };
+  }
 }
 
 // Export singleton instance

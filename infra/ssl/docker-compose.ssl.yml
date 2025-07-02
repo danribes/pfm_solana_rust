@@ -1,0 +1,87 @@
+version: '3.8'
+
+# SSL Certificate Management Extension for PFM Community Management
+# Task 6.6.3: SSL/TLS Certificate Management & Security
+
+services:
+  # Nginx with SSL termination
+  nginx-ssl:
+    image: nginx:1.25-alpine
+    container_name: pfm-nginx-ssl
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # SSL certificates from Let's Encrypt
+      - letsencrypt_certs:/etc/letsencrypt:ro
+      - letsencrypt_webroot:/var/www/certbot:ro
+      
+      # SSL configuration files
+      - ./infra/ssl/config/tls-config.conf:/etc/nginx/conf.d/ssl.conf:ro
+      - ./infra/ssl/config/security-headers.conf:/etc/nginx/conf.d/security.conf:ro
+      
+      # Nginx configuration
+      - ./infra/webserver/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/webserver/sites-available:/etc/nginx/sites-available:ro
+      
+      # Logs
+      - nginx_ssl_logs:/var/log/nginx
+    environment:
+      - TZ=UTC
+      - NGINX_WORKER_PROCESSES=auto
+      - NGINX_WORKER_CONNECTIONS=1024
+    depends_on:
+      - certbot
+    networks:
+      - pfm-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Certbot for Let's Encrypt certificate management
+  certbot:
+    image: certbot/certbot:latest
+    container_name: pfm-certbot
+    volumes:
+      # Let's Encrypt certificates
+      - letsencrypt_certs:/etc/letsencrypt
+      - letsencrypt_webroot:/var/www/certbot
+      
+      # Certbot configuration
+      - ./infra/ssl/config/certbot-config.ini:/etc/letsencrypt/cli.ini:ro
+      
+      # Scripts for hooks
+      - ./scripts/ssl:/usr/local/bin/ssl-scripts:ro
+      
+      # Logs
+      - certbot_logs:/var/log/letsencrypt
+    environment:
+      - TZ=UTC
+      - CERTBOT_EMAIL=admin@pfm-community.app
+    networks:
+      - pfm-network
+    restart: "no"
+    entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'
+
+volumes:
+  # Let's Encrypt certificate storage
+  letsencrypt_certs:
+    driver: local
+  
+  # Webroot for ACME challenges
+  letsencrypt_webroot:
+    driver: local
+  
+  # Log volumes
+  nginx_ssl_logs:
+    driver: local
+  certbot_logs:
+    driver: local
+
+networks:
+  pfm-network:
+    external: true

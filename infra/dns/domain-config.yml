@@ -1,0 +1,165 @@
+# Task 6.6.1: Domain Configuration
+# Comprehensive domain management for pfm-community.app
+
+domain:
+  name: "pfm-community.app"
+  registrar: "Cloudflare"
+  nameservers:
+    - "eva.ns.cloudflare.com"
+    - "tim.ns.cloudflare.com"
+  
+  # Domain Security Settings
+  security:
+    dnssec: true
+    domain_lock: true
+    privacy_protection: true
+    auto_renew: true
+    registrar_lock: true
+    
+  # SSL Configuration
+  ssl:
+    provider: "Let's Encrypt"
+    wildcard: true
+    auto_renewal: true
+    hsts_preload: true
+    certificate_transparency: true
+
+# Subdomain Configuration
+subdomains:
+  # Main application
+  app:
+    target: "pfm-community.app"
+    type: "CNAME"
+    ssl: true
+    description: "Member portal application"
+    
+  # Admin dashboard
+  admin:
+    target: "pfm-community.app"
+    type: "CNAME"
+    ssl: true
+    description: "Administrative dashboard"
+    
+  # API services
+  api:
+    target: "pfm-community.app"
+    type: "CNAME"
+    ssl: true
+    description: "Backend API services"
+    
+  # Static content delivery
+  cdn:
+    target: "pfm-community.app"
+    type: "CNAME"
+    ssl: true
+    description: "Content delivery network"
+    
+  # Status and monitoring
+  status:
+    target: "pfm-community.app"
+    type: "CNAME"
+    ssl: true
+    description: "System status and uptime monitoring"
+    
+  # Documentation
+  docs:
+    target: "pfm-community.app"
+    type: "CNAME"
+    ssl: true
+    description: "Platform documentation"
+
+# Email Configuration
+email:
+  provider: "ForwardEmail.net"
+  mx_records:
+    - priority: 10
+      value: "mx1.forwardemail.net"
+    - priority: 20
+      value: "mx2.forwardemail.net"
+  
+  # Email Forwarding Rules
+  forwarding:
+    - from: "contact@pfm-community.app"
+      to: "admin@company.com"
+    - from: "support@pfm-community.app"
+      to: "support@company.com"
+    - from: "admin@pfm-community.app"
+      to: "admin@company.com"
+    - from: "noreply@pfm-community.app"
+      to: "dev-null@company.com"
+
+# Security Records
+security_records:
+  spf:
+    value: "v=spf1 include:forwardemail.net ~all"
+    
+  dmarc:
+    value: "v=DMARC1; p=quarantine; rua=mailto:dmarc@pfm-community.app; ruf=mailto:dmarc@pfm-community.app; fo=1"
+    
+  dkim:
+    selector: "fm1"
+    value: "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC..."
+    
+  caa:
+    - flags: 0
+      tag: "issue"
+      value: "letsencrypt.org"
+    - flags: 0
+      tag: "issuewild"
+      value: "letsencrypt.org"
+    - flags: 0
+      tag: "iodef"
+      value: "mailto:security@pfm-community.app"
+
+# Monitoring Configuration
+monitoring:
+  uptime_checks:
+    - url: "https://pfm-community.app"
+      interval: 60
+      timeout: 30
+      regions: ["us-east", "us-west", "eu-west", "asia-pacific"]
+      
+    - url: "https://app.pfm-community.app"
+      interval: 60
+      timeout: 30
+      regions: ["us-east", "us-west", "eu-west"]
+      
+    - url: "https://api.pfm-community.app/health"
+      interval: 30
+      timeout: 15
+      regions: ["us-east", "us-west", "eu-west"]
+
+  # DNS Monitoring
+  dns_checks:
+    - record_type: "A"
+      name: "pfm-community.app"
+      expected_value: "SERVER_IP"
+      
+    - record_type: "CNAME"
+      name: "app.pfm-community.app"
+      expected_value: "pfm-community.app"
+
+# Backup and Recovery
+backup:
+  dns_backup:
+    frequency: "daily"
+    retention: "30 days"
+    provider: "Cloudflare API"
+    
+  certificate_backup:
+    frequency: "weekly"
+    retention: "90 days"
+    location: "secure-storage"
+
+# Compliance and Documentation
+compliance:
+  gdpr: true
+  ccpa: true
+  privacy_policy_url: "https://pfm-community.app/privacy"
+  terms_of_service_url: "https://pfm-community.app/terms"
+  
+documentation:
+  domain_setup: "docs/domain-management.md"
+  ssl_setup: "docs/ssl-certificate-management.md"
+  dns_management: "docs/dns-configuration.md"
+  troubleshooting: "docs/domain-troubleshooting.md"

@@ -35,6 +35,7 @@ export interface UseWalletReturn {
   supportedWallets: SupportedWallet[];
   installedWallets: SupportedWallet[];
   availableWallets: SupportedWallet[];
+  walletName: string;
 
   // Network management
   networkName: string;
@@ -60,6 +61,17 @@ export interface UseWalletReturn {
 export const useWallet = (): UseWalletReturn => {
   const context = useWalletContext();
 
+  // Computed values
+  const address = useMemo(() => {
+    return context.publicKey ? formatWalletAddress(context.publicKey.toString()) : '';
+  }, [context.publicKey]);
+
+  const shortAddress = useMemo(() => {
+    if (!context.publicKey) return '';
+    const addr = context.publicKey.toString();
+    return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+  }, [context.publicKey]);
+
   return {
     connected: context.connected,
     connecting: context.connecting,
@@ -69,6 +81,9 @@ export const useWallet = (): UseWalletReturn => {
     error: context.error,
     connect: context.connect,
     disconnect: context.disconnect,
+    selectWallet: context.selectWallet,
+    address,
+    shortAddress,
     walletName: context.wallet?.name || 'Not connected',
     networkName: context.networkInfo?.name || 'devnet',
     supportedWallets: context.supportedWallets,
@@ -76,8 +91,8 @@ export const useWallet = (): UseWalletReturn => {
     availableWallets: context.supportedWallets.filter((w: any) => !w.installed),
     networkDisplayName: context.networkInfo?.displayName || 'Unknown Network',
     switchNetwork: context.switchNetwork,
-    autoConnect: context.preferences.autoConnect,
-    lastConnectedWallet: context.preferences.lastConnectedWallet,
+    autoConnect: context.preferences?.autoConnect || false,
+    lastConnectedWallet: context.preferences?.lastConnectedWallet || null,
     setAutoConnect: context.updatePreferences,
     isValidConnection: useMemo(() => {
       return validateWalletConnection(context.wallet, context.publicKey);
@@ -92,8 +107,7 @@ export const useWallet = (): UseWalletReturn => {
     getWalletDownloadUrl: useCallback((walletName: string): string | null => {
       const wallet = context.supportedWallets.find(w => w.name === walletName);
       return wallet?.downloadUrl || wallet?.url || null;
-    }, [context.supportedWallets]),
-    selectWallet: context.selectWallet
+    }, [context.supportedWallets])
   };
 };
 

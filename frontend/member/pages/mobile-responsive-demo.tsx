@@ -3,17 +3,21 @@ import React, { useState, useEffect } from 'react';
 const MobileResponsiveDemo: React.FC = () => {
   // Responsive state management (inline implementation)
   const [screenInfo, setScreenInfo] = useState({
-    width: typeof window !== 'undefined' ? window.innerWidth : 1024,
-    height: typeof window !== 'undefined' ? window.innerHeight : 768,
+    width: 1024,
+    height: 768,
     isMobile: false,
     isTablet: false,
-    isDesktop: false,
+    isDesktop: true,
     deviceType: 'desktop' as 'mobile' | 'tablet' | 'desktop' | 'large',
     isTouchDevice: false
   });
 
-  // Update screen info on resize
+  const [isClient, setIsClient] = useState(false);
+
+  // Handle client-side hydration and screen info updates
   useEffect(() => {
+    setIsClient(true);
+    
     const updateScreenInfo = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;

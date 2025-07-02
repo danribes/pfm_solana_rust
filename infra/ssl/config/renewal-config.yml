@@ -1,0 +1,126 @@
+# SSL Certificate Renewal Configuration
+# Task 6.6.3: SSL/TLS Certificate Management
+
+renewal:
+  # Renewal schedule (cron-compatible)
+  schedule:
+    # Check twice daily at 2:30 AM and 2:30 PM
+    minute: "30"
+    hour: "2,14"
+    day: "*"
+    month: "*"
+    weekday: "*"
+  
+  # Renewal thresholds
+  thresholds:
+    # Renew certificates expiring within 30 days
+    renew_days: 30
+    # Warning threshold for monitoring
+    warning_days: 14
+    # Critical threshold for alerting
+    critical_days: 7
+  
+  # Backup configuration
+  backup:
+    enabled: true
+    # Keep 30 days of certificate backups
+    retention_days: 30
+    # Backup location
+    path: "/var/backups/ssl"
+    # Compress backups
+    compress: true
+    # Include private keys in backups
+    include_private_keys: true
+  
+  # Notification settings
+  notifications:
+    enabled: true
+    # Email notifications
+    email:
+      enabled: true
+      smtp_server: "smtp.pfm-community.app"
+      smtp_port: 587
+      smtp_tls: true
+      sender: "ssl-monitor@pfm-community.app"
+      recipients:
+        - "admin@pfm-community.app"
+        - "devops@pfm-community.app"
+    
+    # Webhook notifications
+    webhook:
+      enabled: true
+      url: "https://api.pfm-community.app/webhooks/ssl-status"
+      timeout: 30
+      retries: 3
+
+# Certificate domains configuration
+domains:
+  primary:
+    name: "pfm-community.app"
+    domains:
+      - "pfm-community.app"
+      - "www.pfm-community.app"
+    challenge_type: "http-01"
+    webroot: "/var/www/certbot"
+  
+  api:
+    name: "api.pfm-community.app"
+    domains:
+      - "api.pfm-community.app"
+    challenge_type: "http-01"
+    webroot: "/var/www/certbot"
+  
+  admin:
+    name: "admin.pfm-community.app"
+    domains:
+      - "admin.pfm-community.app"
+    challenge_type: "http-01"
+    webroot: "/var/www/certbot"
+  
+  member:
+    name: "member.pfm-community.app"
+    domains:
+      - "member.pfm-community.app"
+    challenge_type: "http-01"
+    webroot: "/var/www/certbot"
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  # Check interval in minutes
+  check_interval: 60
+  
+  # SSL validation checks
+  ssl_checks:
+    # Certificate chain validation
+    chain_validation: true
+    # OCSP validation
+    ocsp_validation: true
+    # Certificate transparency logs
+    ct_validation: true
+    # Cipher suite validation
+    cipher_validation: true
+
+# Security settings
+security:
+  # Certificate validation
+  validation:
+    # Minimum certificate validity period
+    min_validity_days: 30
+    # Maximum certificate age for renewal
+    max_age_days: 89
+    # Verify certificate chain
+    verify_chain: true
+    # Check revocation status
+    check_revocation: true
+  
+  # Key security
+  key_security:
+    # Minimum key size
+    min_key_size: 2048
+    # Preferred key size
+    preferred_key_size: 4096
+    # Elliptic curve preference
+    preferred_curve: "secp384r1"
+    # Key rotation interval (days)
+    rotation_interval: 365
