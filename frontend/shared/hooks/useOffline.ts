@@ -20,13 +20,26 @@ import {
 import offlineService from '../services/offline';
 
 export function useOffline(): UseOfflineReturn {
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [networkStatus, setNetworkStatus] = useState<NetworkStatus>(offlineService.getNetworkStatus());
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(offlineService.getSyncStatus());
   const [operationQueue, setOperationQueue] = useState<OfflineOperation[]>([]);
   const [conflicts, setConflicts] = useState<DataConflict[]>([]);
   
   const eventHandlersRef = useRef<Map<keyof OfflineEvents, Function>>(new Map());
+
+  // Update isOnline on client
+  useEffect(() => {
+    if (typeof navigator !== 'undefined') {
+      const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+      window.addEventListener('online', updateOnlineStatus);
+      window.addEventListener('offline', updateOnlineStatus);
+      return () => {
+        window.removeEventListener('online', updateOnlineStatus);
+        window.removeEventListener('offline', updateOnlineStatus);
+      };
+    }
+  }, []);
 
   // Initialize on mount
   useEffect(() => {

@@ -27,7 +27,10 @@ class ReportService {
     };
     
     this.reportsDir = path.join(__dirname, '../reports');
-    this.ensureReportsDirectory();
+    // Initialize directory asynchronously
+    this.ensureReportsDirectory().catch(error => {
+      console.error('Failed to ensure reports directory:', error.message);
+    });
   }
 
   /**

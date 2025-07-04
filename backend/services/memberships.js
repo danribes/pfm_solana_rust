@@ -1,6 +1,7 @@
 const { Member, Community, User } = require('../models');
 const { Op } = require('sequelize');
 const cache = require('./cache');
+const notificationService = require('./notifications');
 
 class MembershipService {
   // Apply to join a community
@@ -55,6 +56,16 @@ class MembershipService {
 
       // Invalidate cache
       await this.invalidateMembershipCache(communityId);
+
+      // Send notification to admins if approval is required
+      if (community.require_approval) {
+        try {
+          await notificationService.notifyJoinRequest(communityId, userId, applicationData);
+        } catch (notificationError) {
+          console.error('Failed to send join request notification:', notificationError);
+          // Don't fail the application if notification fails
+        }
+      }
 
       return membership;
     } catch (error) {
@@ -267,6 +278,14 @@ class MembershipService {
       // Invalidate cache
       await this.invalidateMembershipCache(communityId);
 
+      // Send notification to the user
+      try {
+        await notificationService.notifyMembershipApproved(communityId, membership.user_id, approvedBy);
+      } catch (notificationError) {
+        console.error('Failed to send approval notification:', notificationError);
+        // Don't fail the approval if notification fails
+      }
+
       return membership;
     } catch (error) {
       console.error('Error approving member:', error);
@@ -297,6 +316,14 @@ class MembershipService {
 
       // Invalidate cache
       await this.invalidateMembershipCache(communityId);
+
+      // Send notification to the user
+      try {
+        await notificationService.notifyMembershipRejected(communityId, membership.user_id, rejectedBy, reason);
+      } catch (notificationError) {
+        console.error('Failed to send rejection notification:', notificationError);
+        // Don't fail the rejection if notification fails
+      }
 
       return membership;
     } catch (error) {

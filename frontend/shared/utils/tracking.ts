@@ -717,5 +717,4 @@ export const TrackingUtils = {
   }
 };
 
-// Export main tracking classes
-export { EventTracker, PerformanceTracker, DeviceDetector, ConversionTracker }; 
+// Main tracking classes are already exported individually above 

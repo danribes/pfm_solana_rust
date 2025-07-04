@@ -29,13 +29,9 @@ RUN npm ci
 # Copy application code
 COPY . .
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nextjs && \
-    adduser -S nextjs -u 1001
-
 # Change ownership of app directory
-RUN chown -R nextjs:nextjs /app
-USER nextjs
+RUN chown -R node:node /app
+USER node
 
 # Expose port
 EXPOSE 3002

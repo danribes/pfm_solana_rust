@@ -1,13 +1,20 @@
 import type { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
-import { AuthProvider } from '../../shared/contexts/AuthContext';
-import { WalletConnectionProvider } from '../../shared/components/WalletConnection/WalletConnectionProvider';
-import { NotificationProvider } from '../../shared/contexts/NotificationContext';
-import { SessionProvider } from '../../shared/contexts/SessionContext';
-import { OfflineProvider } from '../../shared/contexts/OfflineContext';
-import { AnalyticsProvider } from '../../shared/contexts/AnalyticsContext';
+// Temporarily comment out shared imports
+// import { AuthProvider } from '../../shared/contexts/AuthContext';
+// import { WalletConnectionProvider } from '../../shared/components/WalletConnection/WalletConnectionProvider';
+// import { NotificationProvider } from '../../shared/contexts/NotificationContext';
+// import { SessionProvider } from '../../shared/contexts/SessionContext';
+// import { OfflineProvider } from '../../shared/contexts/OfflineContext';
+// import { AnalyticsProvider } from '../../shared/contexts/AnalyticsContext';
 import '../styles/globals.css';
+import { ThemeProvider } from 'next-themes';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { Toaster } from 'react-hot-toast';
+
+// Import Solana wallet adapter styles
+import '@solana/wallet-adapter-react-ui/styles.css';
 
 // Protected routes that require authentication
 const protectedRoutes = [
@@ -26,6 +33,8 @@ const publicRoutes = [
   '/',
   '/onboarding'
 ];
+
+const queryClient = new QueryClient();
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -57,19 +66,25 @@ function MyApp({ Component, pageProps }: AppProps) {
   }, [router]);
 
   return (
-    <AnalyticsProvider>
-      <OfflineProvider>
-        <NotificationProvider>
-          <SessionProvider>
-            <WalletConnectionProvider>
-              <AuthProvider>
-                <Component {...pageProps} />
-              </AuthProvider>
-            </WalletConnectionProvider>
-          </SessionProvider>
-        </NotificationProvider>
-      </OfflineProvider>
-    </AnalyticsProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class">
+        {/* Temporarily comment out all shared providers */}
+        {/* <AuthProvider>
+          <WalletConnectionProvider>
+            <NotificationProvider>
+              <SessionProvider>
+                <OfflineProvider>
+                  <AnalyticsProvider> */}
+                    <Component {...pageProps} />
+                    <Toaster position="bottom-right" />
+                  {/* </AnalyticsProvider>
+                </OfflineProvider>
+              </SessionProvider>
+            </NotificationProvider>
+          </WalletConnectionProvider>
+        </AuthProvider> */}
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

@@ -429,15 +429,17 @@ class OfflineServiceImpl implements OfflineService {
 
   // Private Methods
   private createInitialState(): OfflineState {
+    const isNavigator = typeof navigator !== 'undefined';
+    const isOnline = isNavigator ? navigator.onLine : true;
     return {
       networkStatus: {
-        isOnline: navigator.onLine,
-        connectionState: navigator.onLine ? 'online' : 'offline',
+        isOnline: isOnline,
+        connectionState: isOnline ? 'online' : 'offline',
         quality: 'good',
         speed: 0,
         latency: 0,
-        lastOnline: navigator.onLine ? new Date() : null,
-        lastOffline: !navigator.onLine ? new Date() : null,
+        lastOnline: isOnline ? new Date() : null,
+        lastOffline: !isOnline ? new Date() : null,
         downtime: 0
       },
       config: this.config,

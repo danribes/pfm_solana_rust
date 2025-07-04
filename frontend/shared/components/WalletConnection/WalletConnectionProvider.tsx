@@ -7,9 +7,6 @@ import { WalletProvider } from '../../contexts/WalletContext';
 import { getWalletAdapters, NETWORKS, DEFAULT_NETWORK, RPC_ENDPOINTS } from '../../config/wallet';
 import type { WalletError } from '../../types/wallet';
 
-// Import wallet adapter CSS
-require('@solana/wallet-adapter-react-ui/styles.css');
-
 interface WalletConnectionProviderProps {
   children: React.ReactNode;
   network?: 'mainnet-beta' | 'devnet' | 'testnet' | 'localhost';

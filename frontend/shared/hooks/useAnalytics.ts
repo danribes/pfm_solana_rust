@@ -5,7 +5,7 @@
  * Provides easy-to-use interface for tracking events, user behavior, and performance.
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import * as React from 'react';
 import {
   UseAnalyticsReturn,
   AnalyticsConfig,
@@ -21,16 +21,26 @@ import analyticsService from '../services/analytics';
 import { EventTracker, PerformanceTracker, ConversionTracker } from '../utils/tracking';
 
 export function useAnalytics(): UseAnalyticsReturn {
-  const [isEnabled, setIsEnabled] = useState<boolean>(false);
-  const [isInitialized, setIsInitialized] = useState<boolean>(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [config, setConfigState] = useState<AnalyticsConfig>(analyticsService.getConfig());
+  // Debug React import and add error handling
+  console.log('React in useAnalytics:', React);
+  console.log('useState in useAnalytics:', React.useState);
   
-  const eventHandlersRef = useRef<Map<keyof AnalyticsEvents, Function>>(new Map());
+  // Check if React and useState are available
+  if (!React || !React.useState) {
+    console.error('React or React.useState is not available in useAnalytics');
+    throw new Error('React hooks are not available. This may be due to a module resolution issue.');
+  }
+  
+  const [isEnabled, setIsEnabled] = React.useState<boolean>(false);
+  const [isInitialized, setIsInitialized] = React.useState<boolean>(false);
+  const [sessionId, setSessionId] = React.useState<string | null>(null);
+  const [userId, setUserId] = React.useState<string | null>(null);
+  const [config, setConfigState] = React.useState<AnalyticsConfig>(analyticsService.getConfig());
+  
+  const eventHandlersRef = React.useRef<Map<keyof AnalyticsEvents, Function>>(new Map());
 
   // Initialize analytics on mount
-  useEffect(() => {
+  React.useEffect(() => {
     const initializeAnalytics = async () => {
       try {
         await analyticsService.initialize();
@@ -77,7 +87,7 @@ export function useAnalytics(): UseAnalyticsReturn {
   }, []);
 
   // Track custom events
-  const track = useCallback(async (
+  const track = React.useCallback(async (
     category: EventCategory,
     action: EventAction,
     label?: string,
@@ -100,7 +110,7 @@ export function useAnalytics(): UseAnalyticsReturn {
   }, [isEnabled, isInitialized]);
 
   // Track page views
-  const trackPageView = useCallback(async (
+  const trackPageView = React.useCallback(async (
     url?: string,
     title?: string,
     properties?: Record<string, any>
@@ -119,7 +129,7 @@ export function useAnalytics(): UseAnalyticsReturn {
   }, [isEnabled, isInitialized]);
 
   // Track errors
-  const trackError = useCallback(async (
+  const trackError = React.useCallback(async (
     error: Error,
     metadata?: Record<string, any>
   ): Promise<void> => {
@@ -139,7 +149,7 @@ export function useAnalytics(): UseAnalyticsReturn {
   }, [isEnabled, isInitialized]);
 
   // Track performance metrics
-  const trackPerformance = useCallback(async (
+  const trackPerformance = React.useCallback(async (
     metrics: Partial<PerformanceMetrics>
   ): Promise<void> => {
     if (!isEnabled || !isInitialized) return;
@@ -152,7 +162,7 @@ export function useAnalytics(): UseAnalyticsReturn {
   }, [isEnabled, isInitialized]);
 
   // Track conversions
-  const trackConversion = useCallback(async (
+  const trackConversion = React.useCallback(async (
     type: string,
     value?: number,
     properties?: Record<string, any>
@@ -178,7 +188,7 @@ export function useAnalytics(): UseAnalyticsReturn {
   }, [isEnabled, isInitialized]);
 
   // User identification
-  const identify = useCallback(async (
+  const identify = React.useCallback(async (
     userId: string,
     properties?: Record<string, any>
   ): Promise<void> => {
@@ -193,7 +203,7 @@ export function useAnalytics(): UseAnalyticsReturn {
   }, [isEnabled, isInitialized]);
 
   // Set user properties
-  const setUserProperties = useCallback(async (
+  const setUserProperties = React.useCallback(async (
     properties: Record<string, any>
   ): Promise<void> => {
     if (!isEnabled || !isInitialized) return;
@@ -206,7 +216,7 @@ export function useAnalytics(): UseAnalyticsReturn {
   }, [isEnabled, isInitialized]);
 
   // Session management
-  const startSession = useCallback(async (): Promise<void> => {
+  const startSession = React.useCallback(async (): Promise<void> => {
     if (!isEnabled || !isInitialized) return;
 
     try {
@@ -218,7 +228,7 @@ export function useAnalytics(): UseAnalyticsReturn {
     }
   }, [isEnabled, isInitialized]);
 
-  const endSession = useCallback(async (): Promise<void> => {
+  const endSession = React.useCallback(async (): Promise<void> => {
     if (!isEnabled || !isInitialized) return;
 
     try {
@@ -230,7 +240,7 @@ export function useAnalytics(): UseAnalyticsReturn {
   }, [isEnabled, isInitialized]);
 
   // Configuration management
-  const setConfig = useCallback((newConfig: Partial<AnalyticsConfig>): void => {
+  const setConfig = React.useCallback((newConfig: Partial<AnalyticsConfig>): void => {
     try {
       analyticsService.updateConfig(newConfig);
       setConfigState(analyticsService.getConfig());
@@ -239,12 +249,12 @@ export function useAnalytics(): UseAnalyticsReturn {
     }
   }, []);
 
-  const getConfig = useCallback((): AnalyticsConfig => {
+  const getConfig = React.useCallback((): AnalyticsConfig => {
     return analyticsService.getConfig();
   }, []);
 
   // Data access
-  const getRealtimeMetrics = useCallback(async (): Promise<RealTimeMetrics> => {
+  const getRealtimeMetrics = React.useCallback(async (): Promise<RealTimeMetrics> => {
     if (!isEnabled || !isInitialized) {
       throw new Error('Analytics not enabled or initialized');
     }
@@ -257,7 +267,7 @@ export function useAnalytics(): UseAnalyticsReturn {
     }
   }, [isEnabled, isInitialized]);
 
-  const generateReport = useCallback(async (
+  const generateReport = React.useCallback(async (
     reportConfig: Partial<AnalyticsReport>
   ): Promise<AnalyticsReport> => {
     if (!isEnabled || !isInitialized) {
@@ -273,14 +283,14 @@ export function useAnalytics(): UseAnalyticsReturn {
   }, [isEnabled, isInitialized]);
 
   // Event listener management
-  const addEventListener = useCallback(<K extends keyof AnalyticsEvents>(
+  const addEventListener = React.useCallback(<K extends keyof AnalyticsEvents>(
     event: K,
     handler: (data: AnalyticsEvents[K]) => void
   ): void => {
     analyticsService.on(event, handler);
   }, []);
 
-  const removeEventListener = useCallback(<K extends keyof AnalyticsEvents>(
+  const removeEventListener = React.useCallback(<K extends keyof AnalyticsEvents>(
     event: K,
     handler: (data: AnalyticsEvents[K]) => void
   ): void => {
@@ -314,7 +324,7 @@ export function useAnalytics(): UseAnalyticsReturn {
 export function usePageTracking() {
   const analytics = useAnalytics();
   
-  useEffect(() => {
+  React.useEffect(() => {
     // Track page view on mount
     analytics.trackPageView();
     
@@ -343,7 +353,7 @@ export function usePageTracking() {
 export function useClickTracking(elementRef: React.RefObject<HTMLElement>) {
   const analytics = useAnalytics();
 
-  useEffect(() => {
+  React.useEffect(() => {
     const element = elementRef.current;
     if (!element) return;
 
@@ -371,7 +381,7 @@ export function useClickTracking(elementRef: React.RefObject<HTMLElement>) {
 export function useErrorTracking() {
   const analytics = useAnalytics();
 
-  useEffect(() => {
+  React.useEffect(() => {
     const handleError = (event: ErrorEvent) => {
       analytics.trackError(new Error(event.message), {
         filename: event.filename,

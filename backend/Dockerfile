@@ -21,10 +21,13 @@ RUN apk add --no-cache \
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy application code
 COPY . .
+
+# Create necessary directories
+RUN mkdir -p /app/reports /app/logs /app/uploads
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \

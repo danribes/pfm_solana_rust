@@ -147,6 +147,10 @@ async function initializeApp() {
     const sessionRoutes = require('./routes/session');
     app.use('/api/sessions', sessionRoutes);
 
+    // Register notifications API routes
+    const notificationRoutes = require('./routes/notifications');
+    app.use('/api/notifications', notificationRoutes);
+
     // Authentication endpoints
     app.post('/auth/login', async (req, res) => {
       try {

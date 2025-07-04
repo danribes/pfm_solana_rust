@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import Link from 'next/link';
-import { useAuth } from '../../shared/contexts/AuthContext';
-import { useWallet } from '../../shared/hooks/useWallet';
-import { useWalletContext } from '../../shared/contexts/WalletContext';
-import { WalletButton } from '../../shared/components/WalletConnection/WalletButton';
-import { WalletModal } from '../../shared/components/WalletConnection/WalletModal';
+// Temporarily comment out shared imports
+// import { useAuth } from '../../shared/contexts/AuthContext';
+// import { useWallet } from '../../shared/hooks/useWallet';
+// import { useWalletContext } from '../../shared/contexts/WalletContext';
+// import { WalletButton } from '../../shared/components/WalletConnection/WalletButton';
+// import { WalletModal } from '../../shared/components/WalletConnection/WalletModal';
 
 interface LoginPageProps {}
 
 const LoginPage: React.FC<LoginPageProps> = () => {
   const router = useRouter();
-  const { authState, authenticate, generateAuthMessage, clearError } = useAuth();
-  const wallet = useWallet();
-  const { wallet: walletContext } = useWalletContext();
+  // Temporarily comment out shared hooks
+  // const { authState, authenticate, generateAuthMessage, clearError } = useAuth();
+  // const wallet = useWallet();
+  // const { wallet: walletContext } = useWalletContext();
   
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -24,6 +25,8 @@ const LoginPage: React.FC<LoginPageProps> = () => {
   // Get redirect URL from query params
   const redirectTo = router.query.redirect as string || '/dashboard';
 
+  // Temporarily comment out all shared functionality
+  /*
   // Redirect if already authenticated
   useEffect(() => {
     if (authState.isAuthenticated && authState.user) {
@@ -103,6 +106,7 @@ Issued At: ${new Date(authMessage.timestamp).toISOString()}`;
   };
 
   const currentError = error || authState.error?.message;
+  */
 
   return (
     <>
@@ -132,49 +136,21 @@ Issued At: ${new Date(authMessage.timestamp).toISOString()}`;
           <div className="bg-white py-8 px-4 shadow-xl rounded-lg sm:px-10">
             <div className="space-y-6">
               
-              {/* Error Display */}
-              {currentError && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-red-800">{currentError}</p>
-                    </div>
-                    <div className="ml-auto pl-3">
-                      <button
-                        onClick={() => {
-                          setError(null);
-                          clearError();
-                        }}
-                        className="text-red-400 hover:text-red-600"
-                      >
-                        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
+              {/* Temporary Message */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
                   </div>
-                </div>
-              )}
-
-              {/* Loading State */}
-              {(authState.isLoading || isAuthenticating) && (
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                  <div className="flex items-center">
-                    <div className="animate-spin h-5 w-5 text-blue-600 mr-3">
-                      <div className="h-full w-full border-2 border-current border-t-transparent rounded-full" />
-                    </div>
-                    <p className="text-sm text-blue-800">
-                      {wallet.connecting ? 'Connecting to wallet...' : 
-                       isAuthenticating ? 'Authenticating...' : 'Loading...'}
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-800">
+                      Wallet connection temporarily disabled for maintenance.
                     </p>
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* Wallet Connection Section */}
               <div className="space-y-4">
@@ -183,105 +159,26 @@ Issued At: ${new Date(authMessage.timestamp).toISOString()}`;
                     Connect Your Wallet
                   </h3>
                   
-                  {!wallet.connected ? (
-                    <WalletButton
-                      onClick={handleConnectWallet}
-                      variant="primary"
-                      size="lg"
-                      className="w-full justify-center"
-                      showDropdown={false}
-                    />
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                        <div className="flex items-center">
-                          <svg className="h-5 w-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                          <div className="text-left">
-                            <p className="text-sm font-medium text-green-800">
-                              Wallet Connected
-                            </p>
-                            <p className="text-xs text-green-600">
-                              {wallet.walletName} • {wallet.shortAddress}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={handleDisconnect}
-                        className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-200 transition-colors text-sm"
-                      >
-                        Disconnect Wallet
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Remember Me Option */}
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                    Keep me signed in
-                  </label>
-                </div>
-              </div>
-
-              {/* Alternative Options */}
-              <div className="mt-6">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">New to PFM?</span>
-                  </div>
-                </div>
-
-                <div className="mt-6 text-center">
-                  <Link 
-                    href="/register" 
-                    className="text-blue-600 hover:text-blue-500 font-medium text-sm"
+                  <button
+                    disabled
+                    className="w-full bg-gray-300 text-gray-500 py-3 px-4 rounded-md cursor-not-allowed text-sm font-medium"
                   >
-                    Create a new account
-                  </Link>
+                    Wallet Connection Unavailable
+                  </button>
                 </div>
-              </div>
-
-              {/* Help Section */}
-              <div className="mt-6 text-center">
-                <p className="text-xs text-gray-500">
-                  Need help?{' '}
-                  <Link href="/help" className="text-blue-600 hover:text-blue-500">
-                    Contact Support
-                  </Link>
-                </p>
               </div>
             </div>
-          </div>
-
-          {/* Security Notice */}
-          <div className="text-center">
-            <p className="text-xs text-gray-500">
-              🔒 Your wallet signature is used for secure authentication
-            </p>
           </div>
         </div>
       </div>
 
-      {/* Wallet Selection Modal */}
-      <WalletModal
-        isOpen={showWalletModal}
-        onClose={() => setShowWalletModal(false)}
-      />
+      {/* Temporarily comment out wallet modal */}
+      {/* {showWalletModal && (
+        <WalletModal
+          isOpen={showWalletModal}
+          onClose={() => setShowWalletModal(false)}
+        />
+      )} */}
     </>
   );
 };
