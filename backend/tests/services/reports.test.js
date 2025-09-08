@@ -630,13 +630,174 @@ describe('Report Service', () => {
   });
 
   describe('getAvailableExportFormats', () => {
-    it('should return available export formats', () => {
+    it('should return available export formats including Excel', () => {
       const result = reportService.getAvailableExportFormats();
 
       expect(Array.isArray(result)).toBe(true);
       expect(result).toContain('json');
       expect(result).toContain('csv');
       expect(result).toContain('pdf');
+      expect(result).toContain('xlsx');
+    });
+  });
+
+  describe('Excel Export Functionality', () => {
+    let testReport;
+
+    beforeEach(() => {
+      testReport = {
+        report_type: 'community_overview',
+        generated_at: new Date().toISOString(),
+        community_id: testCommunity.id,
+        summary: {
+          total_members: 10,
+          total_questions: 5,
+          active_members: 8,
+          admins: 2
+        },
+        member_statistics: [
+          { role: 'admin', count: 2, active_count: 2 },
+          { role: 'member', count: 8, active_count: 6 }
+        ],
+        voting_trends: [
+          { date: '2023-01-01', votes_cast: 15, active_voters: 8 },
+          { date: '2023-01-02', votes_cast: 12, active_voters: 6 }
+        ]
+      };
+    });
+
+    describe('exportToExcel', () => {
+      it('should export report to Excel format successfully', async () => {
+        // Mock file system operations
+        fs.stat = jest.fn().mockResolvedValue({ size: 1024 });
+
+        const result = await reportService.exportToExcel(testReport, 'test-report.xlsx');
+
+        expect(result).toHaveProperty('format', 'xlsx');
+        expect(result).toHaveProperty('filename', 'test-report.xlsx');
+        expect(result).toHaveProperty('filepath');
+        expect(result).toHaveProperty('size', 1024);
+        expect(result).toHaveProperty('sheets');
+        expect(Array.isArray(result.sheets)).toBe(true);
+      });
+
+      it('should generate filename automatically if not provided', async () => {
+        fs.stat = jest.fn().mockResolvedValue({ size: 2048 });
+
+        const result = await reportService.exportToExcel(testReport);
+
+        expect(result.filename).toMatch(/community_overview_.*\.xlsx$/);
+        expect(result.format).toBe('xlsx');
+      });
+
+      it('should include multiple sheets for comprehensive reports', async () => {
+        fs.stat = jest.fn().mockResolvedValue({ size: 3072 });
+
+        const comprehensiveReport = {
+          ...testReport,
+          user_activity: [
+            { user_id: 1, username: 'user1', activity_count: 5 }
+          ],
+          member_activity: [
+            { member_id: 1, user_id: 1, activity_count: 3 }
+          ]
+        };
+
+        const result = await reportService.exportToExcel(comprehensiveReport);
+
+        expect(result.sheets.length).toBeGreaterThan(1);
+        expect(result.sheets).toContain('Summary');
+      });
+
+      it('should handle export errors gracefully', async () => {
+        // Mock file write error
+        const mockError = new Error('Disk full');
+        jest.spyOn(reportService, 'createSummarySheet').mockRejectedValue(mockError);
+
+        await expect(
+          reportService.exportToExcel(testReport)
+        ).rejects.toThrow('Failed to export report to Excel: Disk full');
+      });
+    });
+
+    describe('formatMetricName', () => {
+      it('should format metric names correctly', () => {
+        expect(reportService.formatMetricName('total_members')).toBe('Total Members');
+        expect(reportService.formatMetricName('avg_votes_per_user')).toBe('Avg Votes Per User');
+        expect(reportService.formatMetricName('active_count')).toBe('Active Count');
+      });
+    });
+
+    describe('importExcelData', () => {
+      let testExcelBuffer;
+
+      beforeEach(() => {
+        // Create a mock Excel file buffer
+        const XLSX = require('xlsx');
+        const workbook = XLSX.utils.book_new();
+        const testData = [
+          ['ID', 'Name', 'Value'],
+          [1, 'Item 1', 100],
+          [2, 'Item 2', 200],
+          [3, 'Item 3', 300]
+        ];
+        const worksheet = XLSX.utils.aoa_to_sheet(testData);
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'TestData');
+        testExcelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      });
+
+      it('should import Excel data successfully', async () => {
+        const result = await reportService.importExcelData(testExcelBuffer);
+
+        expect(result).toHaveProperty('sheet_name', 'TestData');
+        expect(result).toHaveProperty('row_count', 3); // Excluding header
+        expect(result).toHaveProperty('column_count', 3);
+        expect(result).toHaveProperty('has_headers', true);
+        expect(result).toHaveProperty('data');
+        expect(Array.isArray(result.data)).toBe(true);
+        expect(result.data.length).toBe(3);
+      });
+
+      it('should handle import options correctly', async () => {
+        const options = {
+          hasHeaders: false,
+          skipRows: 1,
+          maxRows: 2
+        };
+
+        const result = await reportService.importExcelData(testExcelBuffer, options);
+
+        expect(result.has_headers).toBe(false);
+        expect(result.row_count).toBeLessThanOrEqual(2);
+      });
+
+      it('should handle specific sheet selection', async () => {
+        const options = {
+          sheetName: 'TestData'
+        };
+
+        const result = await reportService.importExcelData(testExcelBuffer, options);
+
+        expect(result.sheet_name).toBe('TestData');
+      });
+
+      it('should handle non-existent sheet gracefully', async () => {
+        const options = {
+          sheetName: 'NonExistentSheet'
+        };
+
+        await expect(
+          reportService.importExcelData(testExcelBuffer, options)
+        ).rejects.toThrow('Sheet "NonExistentSheet" not found');
+      });
+
+      it('should handle invalid Excel data', async () => {
+        const invalidBuffer = Buffer.from('not excel data');
+
+        await expect(
+          reportService.importExcelData(invalidBuffer)
+        ).rejects.toThrow('Excel import failed:');
+      });
     });
   });
 }); 
