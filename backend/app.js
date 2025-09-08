@@ -147,6 +147,10 @@ async function initializeApp() {
     const sessionRoutes = require('./routes/session');
     app.use('/api/sessions', sessionRoutes);
 
+    // Register Excel analysis API routes
+    const excelRoutes = require('./routes/excel');
+    app.use('/api/excel', excelRoutes);
+
     // Authentication endpoints
     app.post('/auth/login', async (req, res) => {
       try {
